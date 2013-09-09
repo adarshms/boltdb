@@ -5,14 +5,16 @@ import java.io.*;
 
 import edu.uiuc.boltdb.logquerier.utils.ClientArgs;
 
-public class TaskThread extends Thread
+public class LogQuerierServerThread extends Thread
 {  
+	private LogQuerierServer server = null;
 	private Socket clientSocket = null;
 	private ObjectInputStream readFromClient = null;
 	private DataOutputStream writeToClient = null;
 
-	public TaskThread(Socket clientSocket)
-	{  
+	public LogQuerierServerThread(LogQuerierServer server, Socket clientSocket)
+	{
+		this.server = server;
 		this.clientSocket = clientSocket;  
 	}
 	
@@ -26,8 +28,9 @@ public class TaskThread extends Thread
 			ClientArgs clientArgs = (ClientArgs)readFromClient.readObject();
 			String regExp = getRegExp(clientArgs.getKeyRegExp(), clientArgs.getValRegExp());
 			System.out.println("INFO : RegExp built from client arguments : " + regExp);
+			String logFile = "machine." + this.server.getServerId() + ".log";
 			
-			String command = "awk 'BEGIN {FS=\" - - \"} " + regExp + " {print $0}' machine.i.log";
+			String command = "awk 'BEGIN {FS=\" - - \"} " + regExp + " {print $0}' " + logFile;
 			
 			Runtime rt = Runtime.getRuntime();
 			Process ps = rt.exec(new String[] {"/bin/sh", "-c", command});

@@ -4,12 +4,14 @@ import java.io.IOException;
 import java.net.Socket;
 import java.net.ServerSocket;
 
-public class BoltServer 
+public class LogQuerierServer 
 {
 	private ServerSocket serverSocket;
+	private int serverId;
 	
-	public BoltServer(int port)
+	public LogQuerierServer(int id, int port)
 	{  
+		serverId = id;
 		try
 	    {  
 			System.out.println("INFO : Binding to port " + port + ", please wait  ...");
@@ -21,6 +23,11 @@ public class BoltServer
 	    {  
 	    	System.out.println(ioe); 
 	    }
+	}
+	
+	public int getServerId()
+	{
+		return serverId;
 	}
 	
 	public void startListening()
@@ -40,27 +47,29 @@ public class BoltServer
 	
 	public void spawnTaskThread(Socket clientSocket)
 	{
-		TaskThread taskThread = new TaskThread(clientSocket);
+		LogQuerierServerThread taskThread = new LogQuerierServerThread(this, clientSocket);
 		taskThread.start();
 	}
 	
 	public static void main(String[] args)
 	{
-		BoltServer boltServer = null;
-		if (args.length != 1)
-			System.out.println("Usage: java -cp boltdb-0.0.1-SNAPSHOT.jar edu.uiuc.boltdb.logquerier.server.BoltServer <port_number>");
+		LogQuerierServer boltServer = null;
+		if (args.length != 2)
+			System.out.println("Usage: java -cp boltdb-0.0.1-SNAPSHOT.jar edu.uiuc.boltdb.logquerier.server.BoltServer <server_id> <port_number>");
 	    else
 	    {
+	    	int id = 1;
 	    	int port = 6789;
     		try 
     		{
-				port = Integer.parseInt(args[0]);
+    			id = Integer.parseInt(args[0]);
+				port = Integer.parseInt(args[1]);
 			} 
     		catch (NumberFormatException e) 
     		{
 				e.printStackTrace();
 			}
-	    	boltServer = new BoltServer(port);
+	    	boltServer = new LogQuerierServer(id, port);
 	    }
 	}
 }
