@@ -26,7 +26,9 @@ public class TaskThread extends Thread
 			ClientArgs clientArgs = (ClientArgs)readFromClient.readObject();
 			String regExp = getRegExp(clientArgs.getKeyRegExp(), clientArgs.getValRegExp());
 			System.out.println("INFO : RegExp built from client arguments : " + regExp);
-			String command = "grep -E " + regExp + " machine.i.log";
+			
+			String command = "awk 'BEGIN {FS=\" - - \"} " + regExp + " {print $0}' machine.i.log";
+			
 			Runtime rt = Runtime.getRuntime();
 			Process ps = rt.exec(new String[] {"/bin/sh", "-c", command});
 			BufferedReader is = new BufferedReader(new InputStreamReader(ps.getInputStream()));
@@ -53,17 +55,16 @@ public class TaskThread extends Thread
 		String regExp = "";
 		if(!keyRegExp.isEmpty() && !valRegExp.isEmpty())
 		{
-			regExp = " | ";
+			regExp = " || ";
 		}
 		if(!keyRegExp.isEmpty())
 		{
-			regExp = keyRegExp + regExp;
+			regExp = "$1~/" + keyRegExp + "/" + regExp;
 		}
 		if(!valRegExp.isEmpty())
 		{
-			regExp = regExp + valRegExp;
+			regExp = regExp + "$2~/" + valRegExp + "/";
 		}
-		regExp = "'(" + regExp + ")'";
 		return regExp;
 	}
    
