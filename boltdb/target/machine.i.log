@@ -1,9 +1,0 @@
-INFO The server is starting
-INFO The first request came
-ERROR The request cannot be served
-INFO The second request came
-INFO The second request was served
-DEBUG Happy Thanksgiving
-OUTPUT a sample output
-DEBUG value of tempvar is 2736
-DEBUG message sent
