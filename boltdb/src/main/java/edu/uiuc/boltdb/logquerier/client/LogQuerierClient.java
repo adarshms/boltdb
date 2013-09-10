@@ -23,10 +23,11 @@ public class LogQuerierClient {
 	private static void runclient(String[] args) throws FileNotFoundException,
 			IOException {
 		Properties prop = new Properties();
-		prop.load((LogQuerierClient.class.getResourceAsStream("/boltdb.prop")));
+		FileInputStream fis = new FileInputStream("./boltdb.prop");
+		prop.load(fis);
 		System.out.println();
 		String[] addresses = prop.getProperty("machines.address").split(",");
-
+		System.out.println("address0 is"+addresses[0]);
 		for (int i = 0; i < addresses.length; i++) {
 			String[] hostPort = addresses[i].split(":");
 			// TODO error conditions
@@ -68,6 +69,7 @@ public class LogQuerierClient {
 
 			System.out.println();
 			System.out.println();
+			fis.close();
 			connection.close();
 		}
 
