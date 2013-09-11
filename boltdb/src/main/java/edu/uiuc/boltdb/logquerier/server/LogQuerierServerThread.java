@@ -5,7 +5,6 @@ import java.io.*;
 
 import edu.uiuc.boltdb.logquerier.utils.ClientArgs;
 
-
 public class LogQuerierServerThread extends Thread
 {  
 	private LogQuerierServer server = null;
@@ -84,7 +83,8 @@ public class LogQuerierServerThread extends Thread
 
 		if(!keyRegExp.isEmpty() && !valRegExp.isEmpty())
 		{
-			command = "grep" + options + " -E '(" + keyRegExp + ".* - - )' " + logFileName + " | grep" + options + " -E '( - - .*" + valRegExp + ")'";
+			//command = "grep" + options + " -E '(" + keyRegExp + ".* - - )' " + logFileName + " | grep" + options + " -E '( - - .*" + valRegExp + ")'";
+			command = "grep" + options + " -E '(" + keyRegExp + ".* - - .*" + valRegExp + ")' " + logFileName;
 			return command;
 		}
 		if(!keyRegExp.isEmpty())
@@ -94,7 +94,7 @@ public class LogQuerierServerThread extends Thread
 		}
 		if(!valRegExp.isEmpty())
 		{
-			command = "grep" + options + " -E '( - - .*" + keyRegExp + ")' " + logFileName;
+			command = "grep" + options + " -E '( - - .*" + valRegExp + ")' " + logFileName;
 			return command;
 		}
 		return command;
