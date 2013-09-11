@@ -5,6 +5,7 @@ import java.io.*;
 
 import edu.uiuc.boltdb.logquerier.utils.ClientArgs;
 
+
 public class LogQuerierServerThread extends Thread
 {  
 	private LogQuerierServer server = null;
@@ -26,12 +27,15 @@ public class LogQuerierServerThread extends Thread
 			System.out.println("INFO : Connected to client at : " + clientInetAddress);
 			readFromClient = new ObjectInputStream(clientSocket.getInputStream());
 			ClientArgs clientArgs = (ClientArgs)readFromClient.readObject();
-			String regExp = getRegExp(clientArgs.getKeyRegExp(), clientArgs.getValRegExp());
-			System.out.println("INFO : RegExp built from client arguments : " + regExp);
-			String logFile = "machine." + this.server.getServerId() + ".log";
-			
-			String command = "awk 'BEGIN {FS=\" - - \"} " + regExp + " {print $0}' " + logFile;
-			
+			//String clientArgsStr = "keyRegExp : " + clientArgs.getKeyRegExp() + " valueRegExp : " + clientArgs.getValRegExp();
+			//System.out.println("INFO : Arguements from client -> " + clientArgsStr);
+			//String regExp = getRegExp(clientArgs.getKeyRegExp(), clientArgs.getValRegExp());
+			String logFileName = "machine." + this.server.getServerId() + ".log";
+			String command = getGrepCommand(clientArgs, logFileName);
+			System.out.println("Command : " + command);
+			//System.out.println("INFO : RegExp built from client arguments : " + regExp);
+			//String command = "awk 'BEGIN {FS=\" - - \"} " + regExp + " {print $0}' " + logFile;
+			//String cmd = "grep "
 			Runtime rt = Runtime.getRuntime();
 			Process ps = rt.exec(new String[] {"/bin/sh", "-c", command});
 			BufferedReader is = new BufferedReader(new InputStreamReader(ps.getInputStream()));
@@ -53,7 +57,7 @@ public class LogQuerierServerThread extends Thread
 		} 
 	}
 	
-	public String getRegExp(String keyRegExp, String valRegExp)
+	/*public String getRegExp(String keyRegExp, String valRegExp)
 	{
 		String regExp = "";
 		if(!keyRegExp.isEmpty() && !valRegExp.isEmpty())
@@ -69,6 +73,31 @@ public class LogQuerierServerThread extends Thread
 			regExp = regExp + "$2~/" + valRegExp + "/";
 		}
 		return regExp;
+	}*/
+	
+	public String getGrepCommand(ClientArgs clientArgs, String logFileName)
+	{
+		String keyRegExp = clientArgs.getKeyRegExp();
+		String valRegExp = clientArgs.getValRegExp();
+		String options = clientArgs.getOptionsString();
+		String command = "";
+
+		if(!keyRegExp.isEmpty() && !valRegExp.isEmpty())
+		{
+			command = "grep" + options + " -E '(" + keyRegExp + ".* - - )' " + logFileName + " | grep" + options + " -E '( - - .*" + valRegExp + ")'";
+			return command;
+		}
+		if(!keyRegExp.isEmpty())
+		{
+			command = "grep" + options + " -E '(" + keyRegExp + ".* - - )' " + logFileName;
+			return command;
+		}
+		if(!valRegExp.isEmpty())
+		{
+			command = "grep" + options + " -E '( - - .*" + keyRegExp + ")' " + logFileName;
+			return command;
+		}
+		return command;
 	}
    
 	public void close() throws IOException

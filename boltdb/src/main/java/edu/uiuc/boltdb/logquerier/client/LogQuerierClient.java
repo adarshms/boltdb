@@ -35,6 +35,8 @@ public class LogQuerierClient {
 				clientArgs.setKeyRegExp(args[++j]);
 			} else if (args[j].equals("-value")) {
 				clientArgs.setValRegExp(args[++j]);
+			} else if(args[j].startsWith("-") || args[j].startsWith("--")) {
+				clientArgs.addOption(args[j]);
 			}
 		}
 

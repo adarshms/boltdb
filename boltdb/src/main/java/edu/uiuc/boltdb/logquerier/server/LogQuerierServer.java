@@ -55,7 +55,7 @@ public class LogQuerierServer
 	{
 		LogQuerierServer boltServer = null;
 		if (args.length != 2)
-			System.out.println("Usage: java -cp boltdb-0.0.1-SNAPSHOT.jar edu.uiuc.boltdb.logquerier.server.BoltServer <server_id> <port_number>");
+			System.out.println("Usage: java -cp boltdb-0.0.1-SNAPSHOT.jar edu.uiuc.boltdb.logquerier.server.LogQuerierServer <server_id> <port_number>");
 	    else
 	    {
 	    	int id = 1;
