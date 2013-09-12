@@ -35,7 +35,7 @@ public class LogQuerierClient {
 				clientArgs.setKeyRegExp(args[++j]);
 			} else if (args[j].equals("-value")) {
 				clientArgs.setValRegExp(args[++j]);
-			} else  {
+			} else {
 				options.append(args[j]);
 				options.append(" ");
 			}
@@ -58,9 +58,9 @@ public class LogQuerierClient {
 			clientThreads.add(newThread);
 		}
 		int completedThreads = 0;
-		while(completedThreads != addresses.length) {
-			for(int i = 0; i < clientThreads.size(); i++) {
-				if(!clientThreads.get(i).isAlive()) {
+		while (completedThreads != addresses.length) {
+			for (int i = 0; i < clientThreads.size(); i++) {
+				if (!clientThreads.get(i).isAlive()) {
 					completedThreads++;
 					printOutput(clientThreads.get(i));
 					clientThreads.remove(i);
@@ -69,22 +69,27 @@ public class LogQuerierClient {
 		}
 
 	}
-	
+
 	private static void printOutput(Thread t) throws IOException {
 		LogQuerierClientThread lct = (LogQuerierClientThread) t;
-		File outputFile = new File("output-"+lct.getAddress().getHostAddress()+"."+lct.getPort());
-		if(outputFile.exists()) {
-			System.out.println();
+		File outputFile = new File("output-"
+				+ lct.getAddress().getHostAddress() + "." + lct.getPort());
+		if (outputFile.exists()) {
 			BufferedReader br = new BufferedReader(new FileReader(outputFile));
 			String line;
-			System.out.println("Logs from "+ lct.getAddress()+":"+lct.getPort());
-			while((line = br.readLine()) != null) {
+			boolean atLeastOneLinePresent = false;
+			while ((line = br.readLine()) != null) {
+				if (!atLeastOneLinePresent) {
+					System.out.println();
+					System.out.println("Logs from " + lct.getAddress() + ":"
+							+ lct.getPort());
+					atLeastOneLinePresent = true;
+				}
 				System.out.println(line);
 			}
 			br.close();
 			outputFile.delete();
-		} /*else {
-			System.out.println(outputFile+" doesnt exists");
-		}*/
+			System.out.println();
+		} 
 	}
 }
