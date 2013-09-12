@@ -87,6 +87,8 @@ public class LogQuerierClient {
 				}
 				System.out.println(line);
 			}
+			if(!atLeastOneLinePresent) System.out.println("No logs from "+lct.getAddress() + ":"
+							+ lct.getPort());
 			br.close();
 			outputFile.delete();
 			System.out.println();
