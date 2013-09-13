@@ -5,6 +5,16 @@ import java.io.*;
 
 import edu.uiuc.boltdb.logquerier.utils.ClientArgs;
 
+/**
+ * This class represents the task performed by the server upon each client request. The instance of 
+ * LogQuerierServerThread is constructed with a clientSocket object. The thread receives arguments 
+ * from the client over the clientSocket. It performs the grep operation using these arguments on the log file 
+ * named machine.<serverId>.log, where serverId is the serverId field of the LogQuerierServer object that spawned
+ * this thread. It then writes back the output of the grep command to the clientSocket.
+ *  
+ * @author adarshms
+ */
+
 public class LogQuerierServerThread extends Thread
 {  
 	private LogQuerierServer server = null;
@@ -12,6 +22,11 @@ public class LogQuerierServerThread extends Thread
 	private ObjectInputStream readFromClient = null;
 	private DataOutputStream writeToClient = null;
 
+	/**
+	 * Constructor to create the thread
+	 * @param server
+	 * @param clientSocket
+	 */
 	public LogQuerierServerThread(LogQuerierServer server, Socket clientSocket)
 	{
 		this.server = server;
@@ -26,15 +41,9 @@ public class LogQuerierServerThread extends Thread
 			System.out.println("INFO : Connected to client at : " + clientInetAddress);
 			readFromClient = new ObjectInputStream(clientSocket.getInputStream());
 			ClientArgs clientArgs = (ClientArgs)readFromClient.readObject();
-			//String clientArgsStr = "keyRegExp : " + clientArgs.getKeyRegExp() + " valueRegExp : " + clientArgs.getValRegExp();
-			//System.out.println("INFO : Arguements from client -> " + clientArgsStr);
-			//String regExp = getRegExp(clientArgs.getKeyRegExp(), clientArgs.getValRegExp());
 			String logFileName = "machine." + this.server.getServerId() + ".log";
 			String command = getGrepCommand(clientArgs, logFileName);
 			System.out.println("Command : " + command);
-			//System.out.println("INFO : RegExp built from client arguments : " + regExp);
-			//String command = "awk 'BEGIN {FS=\" - - \"} " + regExp + " {print $0}' " + logFile;
-			//String cmd = "grep "
 			Runtime rt = Runtime.getRuntime();
 			Process ps = rt.exec(new String[] {"/bin/sh", "-c", command});
 			BufferedReader is = new BufferedReader(new InputStreamReader(ps.getInputStream()));
@@ -56,24 +65,6 @@ public class LogQuerierServerThread extends Thread
 		} 
 	}
 	
-	/*public String getRegExp(String keyRegExp, String valRegExp)
-	{
-		String regExp = "";
-		if(!keyRegExp.isEmpty() && !valRegExp.isEmpty())
-		{
-			regExp = " || ";
-		}
-		if(!keyRegExp.isEmpty())
-		{
-			regExp = "$1~/" + keyRegExp + "/" + regExp;
-		}
-		if(!valRegExp.isEmpty())
-		{
-			regExp = regExp + "$2~/" + valRegExp + "/";
-		}
-		return regExp;
-	}*/
-	
 	public String getGrepCommand(ClientArgs clientArgs, String logFileName)
 	{
 		String keyRegExp = clientArgs.getKeyRegExp();
@@ -83,7 +74,6 @@ public class LogQuerierServerThread extends Thread
 
 		if(!keyRegExp.isEmpty() && !valRegExp.isEmpty())
 		{
-			//command = "grep" + options + " -E '(" + keyRegExp + ".* - - )' " + logFileName + " | grep" + options + " -E '( - - .*" + valRegExp + ")'";
 			command = "grep" + options + " -E '(" + keyRegExp + ".* - - .*" + valRegExp + ")' " + logFileName;
 			return command;
 		}
