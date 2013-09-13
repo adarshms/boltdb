@@ -1,3 +1,4 @@
+package edu.uiuc.boltdb.logquerier.tests;
 
 
 import java.io.BufferedReader;
@@ -19,44 +20,6 @@ public class LogFileGenerator
 		this.rawTextDataFolder = rawTextDataFolder;
 		this.logDataFolder = logDataFolder;
 	}
-
-	/*void parseContent()
-	{
-		File[] segmentFolders = new File(readDataFolder + "segments/").listFiles();
-		for(File folder: segmentFolders)
-			parseSegment(folder.getName());
-	}*/
-	
-	/*void parseSegment(String segmentFolderName)
-	{
-		try
-		{
-			BufferedReader br=new BufferedReader(new FileReader(readDataFolder + "segments/" + segmentFolderName + "/dump"));
-			BufferedWriter bwData=new BufferedWriter(new FileWriter(parseDataFolder + "alldata.txt", true));
-			String curline;
-			while((curline=br.readLine())!=null)
-			{
-				if(curline.contains("Recno::"))
-				{
-					String url=br.readLine();
-					curline=br.readLine(); //skip blank line
-					curline=br.readLine(); //skip "ParseText"
-					
-					String parseText=br.readLine();
-					bwData.write(parseText);
-				}
-			}
-			bwData.close();
-			br.close();
-		}
-		
-		catch(Exception e)
-		{
-			System.out.println("Exception in parseSegment() " + e);
-		}	
-	}
-	*/
-	
 	
 	public void generateLogFile()
 	{
@@ -118,7 +81,6 @@ public class LogFileGenerator
 	public static void main(String args[])
 	{
 		LogFileGenerator index = new LogFileGenerator("/home/adarshms/academics/cs425/mp1/", "/home/adarshms/academics/cs425/mp1/");
-		//index.parseContent();
 		index.generateLogFile();
 	}
 }
