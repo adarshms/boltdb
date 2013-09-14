@@ -33,6 +33,12 @@ public class LogQuerierServerThread extends Thread
 		this.clientSocket = clientSocket;  
 	}
 	
+	/**
+	 * The run method does the following tasks -
+	 * 1) Reads the arguments from the client
+	 * 2) Constructs the grep command by calling getGrepCommand method
+	 * 3) Executes the grep command and streams the data back to the client
+	 */
 	public void run()
 	{  
 		try 
@@ -65,6 +71,13 @@ public class LogQuerierServerThread extends Thread
 		} 
 	}
 	
+	/**
+	 * The getGrepCommand method takes the client arguments and the logFileName, 
+	 * constructs the grep command from these arguments and returns the grep command string.
+	 * @param clientArgs
+	 * @param logFileName
+	 * @return
+	 */
 	public String getGrepCommand(ClientArgs clientArgs, String logFileName)
 	{
 		String keyRegExp = clientArgs.getKeyRegExp();
@@ -90,6 +103,10 @@ public class LogQuerierServerThread extends Thread
 		return command;
 	}
    
+	/**
+	 * This method closes client socket, the read and write streams opened on the client socket
+	 * @throws IOException
+	 */
 	public void close() throws IOException
     {  
 		if(clientSocket != null)

@@ -43,6 +43,11 @@ public class LogQuerierServer
 	    }
 	}
 	
+	/**
+	 * This method returns the serverId that was specified as a command line argument while starting the 
+	 * server
+	 * @return
+	 */
 	public int getServerId()
 	{
 		return serverId;

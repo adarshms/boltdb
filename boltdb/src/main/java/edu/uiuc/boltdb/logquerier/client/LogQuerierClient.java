@@ -43,7 +43,7 @@ public class LogQuerierClient {
 		clientArgs.addOption(options.toString());
 		if (clientArgs.getKeyRegExp().isEmpty()
 				&& clientArgs.getValRegExp().isEmpty()) {
-			System.out.println("Error : Both key and value missing");
+			System.out.println("ERROR : Both key and value parameters missing");
 		}
 
 		String[] addresses = prop.getProperty("machines.address").split(",");

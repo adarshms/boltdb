@@ -23,7 +23,8 @@ public class LogFileGenerator
 	
 	public void generateLogFile()
 	{
-		try {
+		try 
+		{
 			BufferedReader br=new BufferedReader(new FileReader(rawTextDataFolder + "raw_data_1.txt"));
 			BufferedWriter bwData=new BufferedWriter(new FileWriter(logDataFolder + "machine.1.log", true));
 			char[] cbuf = new char[64];
