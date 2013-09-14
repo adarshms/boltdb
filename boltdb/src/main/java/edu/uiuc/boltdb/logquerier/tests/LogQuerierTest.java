@@ -46,6 +46,7 @@ public class LogQuerierTest
 	 */
 	public boolean executeDistributedQuery(String keyRegExp, String valRegExp, String unitTestName)
 	{
+		System.out.println("Executing Distributed query for unit test cast : " + unitTestName);
 		ProcessBuilder pb = null;
 		try
 		{
@@ -82,6 +83,7 @@ public class LogQuerierTest
 	 */
 	public boolean cleanUpDistributedOutput(String unitTestName)
 	{
+		System.out.println("Cleaning output of Distributed query for unit test cast : " + unitTestName);
 		ProcessBuilder pb = null;
 		try
 		{
@@ -120,6 +122,7 @@ public class LogQuerierTest
 	 */
 	public boolean executeLocalQuery(String keyRegExp, String valRegExp, String unitTestName)
 	{
+		System.out.println("Executing local query for unit test cast : " + unitTestName);
 		ProcessBuilder pb = null;
 		try
 		{
@@ -166,6 +169,7 @@ public class LogQuerierTest
 	 */
 	public boolean compareOutputs(String unitTestName)
 	{
+		System.out.println("Comparing the outputs of Distributed query and local query for unit test cast : " + unitTestName);
 		BufferedReader br1 = null;
 		BufferedReader br2 = null;
 		try
