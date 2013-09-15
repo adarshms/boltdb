@@ -84,20 +84,39 @@ public class LogQuerierServerThread extends Thread
 		String valRegExp = clientArgs.getValRegExp();
 		String options = clientArgs.getOptionsString();
 		String command = "";
-
-		if(!keyRegExp.isEmpty() && !valRegExp.isEmpty())
+		
+		if(!(keyRegExp.isEmpty()))
 		{
-			command = "grep" + options + " -E '(" + keyRegExp + ".*:.*" + valRegExp + ")' " + logFileName;
+			if(keyRegExp.endsWith("$"))
+			{
+				keyRegExp = keyRegExp.substring(0, keyRegExp.length()-1);
+			}
+			else
+				keyRegExp += ".*";
+		}
+		if(!(valRegExp.isEmpty()))
+		{
+			if(valRegExp.startsWith("^"))
+			{
+				valRegExp = valRegExp.substring(1);
+			}
+			else
+				valRegExp = ".*" + valRegExp;
+		}
+		
+		if(!(keyRegExp.isEmpty()) && !(valRegExp.isEmpty()))
+		{
+			command = "grep" + options + " -E '(" + keyRegExp + ":" + valRegExp + ")' " + logFileName;
 			return command;
 		}
 		if(!keyRegExp.isEmpty())
 		{
-			command = "grep" + options + " -E '(" + keyRegExp + ".*:)' " + logFileName;
+			command = "grep" + options + " -E '(" + keyRegExp + ":)' " + logFileName;
 			return command;
 		}
 		if(!valRegExp.isEmpty())
 		{
-			command = "grep" + options + " -E '(:.*" + valRegExp + ")' " + logFileName;
+			command = "grep" + options + " -E '(:" + valRegExp + ")' " + logFileName;
 			return command;
 		}
 		return command;
