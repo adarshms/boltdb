@@ -2,12 +2,15 @@ package edu.uiuc.boltdb.logquerier.tests;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.lang.ProcessBuilder.Redirect;
 import java.util.ArrayList;
 import java.util.List;
@@ -56,19 +59,33 @@ public class LogQuerierTest
 				pb = new ProcessBuilder("./dgrep", "-key", keyRegExp);
 			else if(valRegExp != "")
 				pb = new ProcessBuilder("./dgrep", "-value", valRegExp);
-			pb.redirectOutput(new File("unit_tests/" + unitTestName + "/output_dist.txt"));
+			//pb.redirectOutput(new File("unit_tests/" + unitTestName + "/output_dist.txt"));
 			Process ps = pb.start();
+			BufferedReader is = new BufferedReader(new InputStreamReader(ps.getInputStream()));
+			BufferedWriter os = new BufferedWriter(new FileWriter("unit_tests/" + unitTestName + "/output_dist.txt"));
+			String line;
+			while ((line = is.readLine()) != null) 
+			{
+			    os.write(line + "\n");
+			}
 			if(ps.waitFor() != 0)
 			{
 				System.out.println("ERROR : Error executing distributed query for : " + unitTestName);
+				is.close();
+				os.close();
 				return false;
 			}
 			else
+			{
+				is.close();
+				os.close();
 				return true;
+			}
 		}
 		catch(Exception e)
 		{
 			System.out.println("ERROR : Exeception executing distributed query for : " + unitTestName);
+			e.printStackTrace();
 			return false;
 		}
 	}
@@ -92,15 +109,29 @@ public class LogQuerierTest
             commands.add("-c");
             commands.add("grep -v -E '(^Logs from .*|^$)' unit_tests/" + unitTestName + "/output_dist.txt | sort");
 			pb = new ProcessBuilder(commands);
-			pb.redirectOutput(new File("unit_tests/" + unitTestName + "/output_dist_clean.txt"));
+			//pb.redirectOutput(new File("unit_tests/" + unitTestName + "/output_dist_clean.txt"));
 			Process ps = pb.start();
+			BufferedReader is = new BufferedReader(new InputStreamReader(ps.getInputStream()));
+			BufferedWriter os = new BufferedWriter(new FileWriter("unit_tests/" + unitTestName + "/output_dist_clean.txt"));
+			String line;
+			while ((line = is.readLine()) != null) 
+			{
+			    os.write(line + "\n");
+			}
 			if(ps.waitFor() != 0)
 			{
+				is.close();
+				os.close();
 				System.out.println("ERROR : Error cleaning output of distributed query for : " + unitTestName);
 				return false;
 			}
 			else
+			{
+				is.close();
+				os.close();
+				
 				return true;
+			}
 		}
 		catch(Exception e)
 		{
@@ -138,18 +169,36 @@ public class LogQuerierTest
 				else if(valRegExp != "")
 					commands.add("grep -E '(:.*" + valRegExp + ")' /machine." + i + ".log");
 				pb = new ProcessBuilder(commands);
-				pb.redirectOutput(Redirect.appendTo(new File("unit_tests/" + unitTestName + "/output_local.txt")));
+				//pb.redirectOutput(Redirect.appendTo(new File("unit_tests/" + unitTestName + "/output_local.txt")));
 				Process ps = pb.start();
+				BufferedReader is = new BufferedReader(new InputStreamReader(ps.getInputStream()));
+				BufferedWriter os = new BufferedWriter(new FileWriter("unit_tests/" + unitTestName + "/output_local.txt", true));
+				String line;
+				while ((line = is.readLine()) != null) 
+				{
+				    os.write(line + "\n");
+				}
 				ps.waitFor();
+				is.close();
+				os.close();
 			}
 			List<String> commands = new ArrayList<String>();
             commands.add("/bin/sh");
             commands.add("-c");
             commands.add("sort unit_tests/" + unitTestName + "/output_local.txt");
             pb = new ProcessBuilder(commands);
-            pb.redirectOutput(new File("unit_tests/" + unitTestName + "/output_local_clean.txt"));
+            //pb.redirectOutput(new File("unit_tests/" + unitTestName + "/output_local_clean.txt"));
             Process ps = pb.start();
-            ps.waitFor();
+			BufferedReader is = new BufferedReader(new InputStreamReader(ps.getInputStream()));
+			BufferedWriter os = new BufferedWriter(new FileWriter("unit_tests/" + unitTestName + "/output_local_clean.txt"));
+			String line;
+			while ((line = is.readLine()) != null) 
+			{
+			    os.write(line + "\n");
+			}
+			ps.waitFor();
+			is.close();
+			os.close();
 			return true;
 		}
 		catch(Exception e)
@@ -221,13 +270,10 @@ public class LogQuerierTest
 	 * Each log file will have 10,000 log lines. Each log line will have a key and a value separated by 
 	 * the delimiter ":".
 	 * The log files are generated such that -
-	 * 1) 70% of the lines have the the key "FREQKEY"
-	 * 2) 25% of the lines have the key "NSFREQKEY"
-	 * 3) 5% of the lines have the key "RAREKEY"
-	 * 4) 70% of the lines have the value "FREQVAL"
-	 * 5) 25% of the lines have the value "NSFREQVAL"
-	 * 6) 5% of the lines have the value "RAREVAL"
-	 * It uses, two different random number generators to maintain the key and value frequency ratios.
+	 * 1) 70% of the lines have the the key "FREQKEY" and value "FREQVAL"
+	 * 2) 25% of the lines have the key "NSFREQKEY" and value "NSFREQVAL"
+	 * 3) 4% of the lines have the key "RAREKEY" and value "RAREVAL"
+	 * 4) 1% of the lines have the key "VRAREKEY" and value "VRAREVAL"
 	 */
 	public void genrateLogFiles() 
 	{
@@ -240,13 +286,11 @@ public class LogQuerierTest
 			int lineCount = 0;
 			int fileCount = 1;
 			String logLine = "";
-			Random generator1 = new Random();
-			Random generator2 = new Random();
+			Random generator = new Random();
 			bwData = new BufferedWriter(new FileWriter("machine." + fileCount + ".log", true));
 			while(br.read(cbuf, 0, 64) > 0)
 			{
-				int randomNumberForKey = generator1.nextInt(100);
-				int randomNumberForVal = generator2.nextInt(100);
+				int randomNumberForKey = generator.nextInt(100);
 				if(randomNumberForKey < 70)
 				{
 					logLine = "FREQKEY";
@@ -255,26 +299,35 @@ public class LogQuerierTest
 				{
 					logLine = "NSFREQKEY";
 				}
-				else
+				else if(randomNumberForKey < 99)
 				{
 					logLine = "RAREKEY";
+				}
+				else
+				{
+					logLine = "VRAREKEY";
 				}
 				logLine += ":";
 				String line = new String(cbuf);
 				line = line.replaceAll(":", "");
 				logLine += line;
-				if(randomNumberForVal < 70)
+				if(randomNumberForKey < 70)
 				{
 					logLine += " FREQVAL";
 				}
-				else if(randomNumberForVal < 95)
+				else if(randomNumberForKey < 95)
 				{
 					logLine += " NSFREQVAL";
 				}
-				else
+				else if(randomNumberForKey < 99)
 				{
 					logLine += " RAREVAL";
 				}
+				else
+				{
+					logLine += " VRAREVAL";
+				}
+				
 				logLine += " NODE##1";
 				if(lineCount == 10000)
 				{
