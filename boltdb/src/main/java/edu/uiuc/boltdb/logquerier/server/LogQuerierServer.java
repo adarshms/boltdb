@@ -64,7 +64,8 @@ public class LogQuerierServer
 		try 
 		{
 			while(true) 
-			{             
+			{
+				// Spawn the thread and keep listening
 				spawnTaskThread(serverSocket.accept());
 			}
 		} 

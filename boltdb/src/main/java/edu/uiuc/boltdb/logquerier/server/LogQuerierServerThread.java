@@ -45,13 +45,22 @@ public class LogQuerierServerThread extends Thread
 		{
 			InetAddress clientInetAddress = clientSocket.getInetAddress();
 			System.out.println("INFO : Connected to client at : " + clientInetAddress);
+			
+			// Read arguments from client
 			readFromClient = new ObjectInputStream(clientSocket.getInputStream());
 			ClientArgs clientArgs = (ClientArgs)readFromClient.readObject();
+			
 			String logFileName = "machine." + this.server.getServerId() + ".log";
+			
+			// Get the command to execute by calling getGrepCommand and passing it the arguments
 			String command = getGrepCommand(clientArgs, logFileName);
 			System.out.println("Command : " + command);
+			
+			// Execute the command
 			Runtime rt = Runtime.getRuntime();
 			Process ps = rt.exec(new String[] {"/bin/sh", "-c", command});
+			
+			// Read the output of the command and stream it back to the client
 			BufferedReader is = new BufferedReader(new InputStreamReader(ps.getInputStream()));
 			String line;
 			writeToClient = new DataOutputStream(clientSocket.getOutputStream());
@@ -85,6 +94,8 @@ public class LogQuerierServerThread extends Thread
 		String options = clientArgs.getOptionsString();
 		String command = "";
 		
+		// Handle corner cases of "$" apperaring at the end of keyRegExp and "^" appearing at the end 
+		// of valRegExp
 		if(!(keyRegExp.isEmpty()))
 		{
 			if(keyRegExp.endsWith("$"))
@@ -104,6 +115,7 @@ public class LogQuerierServerThread extends Thread
 				valRegExp = ".*" + valRegExp;
 		}
 		
+		// Build the command using the keyRegExp and valRegExp
 		if(!(keyRegExp.isEmpty()) && !(valRegExp.isEmpty()))
 		{
 			command = "grep" + options + " -E '(" + keyRegExp + ":" + valRegExp + ")' " + logFileName;

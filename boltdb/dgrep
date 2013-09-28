@@ -1,5 +1,0 @@
-if [ "$1" == "-startServer" ] ; then
-java -cp ./boltdb-0.0.1-SNAPSHOT.jar edu.uiuc.boltdb.logquerier.server.LogQuerierServer $2 $3
-else
-java -cp boltdb-0.0.1-SNAPSHOT.jar edu.uiuc.boltdb.logquerier.client.LogQuerierClient "$@"
-fi
