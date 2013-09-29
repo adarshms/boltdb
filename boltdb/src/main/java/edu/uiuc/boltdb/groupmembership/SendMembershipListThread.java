@@ -43,4 +43,3 @@ public class SendMembershipListThread extends Thread
 		}
 	}	
 }
-
