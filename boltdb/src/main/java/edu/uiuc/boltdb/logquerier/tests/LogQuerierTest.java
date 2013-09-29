@@ -2,11 +2,9 @@ package edu.uiuc.boltdb.logquerier.tests;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -19,7 +17,7 @@ import java.util.Random;
 /**
  * This class performs the various steps needed to execute a unit test case. It has methods to perform -
  * 1) Log file generation
- * 2) Distritubed log querying
+ * 2) Distributed log querying
  * 3) Local grep on the files
  * 4) Compare output of distributed grep and local grep
  * 
@@ -30,7 +28,7 @@ import java.util.Random;
  * 2) The name of the unit test case. Eg- "unit_test_1"
  * 		* For the unit test case to be a valid unit test case, there has to be a folder with the name of the 
  * 		  unit test case under "unit_tests/". Eg- unit_tests/unit_test_1
- *      * The folder should have a properties file "unit_test.prop". The properties file shoud have and entry
+ *      * The folder should have a properties file "unit_test.prop". The properties file should have and entry
  *        "key" with the value of a keyRegExp, and another entry "value" with the value of a valRegExp
  * @author adarshms
  *
@@ -61,7 +59,8 @@ public class LogQuerierTest
 			//pb.redirectOutput(new File("unit_tests/" + unitTestName + "/output_dist.txt"));
 			Process ps = pb.start();
 			BufferedReader is = new BufferedReader(new InputStreamReader(ps.getInputStream()));
-			BufferedWriter os = new BufferedWriter(new FileWriter("unit_tests/" + unitTestName + "/output_dist.txt"));
+			String outputFileName = "unit_tests/" + unitTestName + "/output_dist.txt";
+			BufferedWriter os = new BufferedWriter(new FileWriter(outputFileName));
 			String line;
 			while ((line = is.readLine()) != null) 
 			{
@@ -156,6 +155,11 @@ public class LogQuerierTest
 		ProcessBuilder pb = null;
 		try
 		{
+			String outputFileName = "unit_tests/" + unitTestName + "/output_local.txt";
+			File testFile = new File(outputFileName);
+			if(testFile.exists())
+				testFile.delete();
+				
 			for(int i=1; i<4; i++)
 			{
 				List<String> commands = new ArrayList<String>();
@@ -171,7 +175,7 @@ public class LogQuerierTest
 				//pb.redirectOutput(Redirect.appendTo(new File("unit_tests/" + unitTestName + "/output_local.txt")));
 				Process ps = pb.start();
 				BufferedReader is = new BufferedReader(new InputStreamReader(ps.getInputStream()));
-				BufferedWriter os = new BufferedWriter(new FileWriter("unit_tests/" + unitTestName + "/output_local.txt", true));
+				BufferedWriter os = new BufferedWriter(new FileWriter(outputFileName, true));
 				String line;
 				while ((line = is.readLine()) != null) 
 				{
@@ -327,7 +331,7 @@ public class LogQuerierTest
 					logLine += " VRAREVAL";
 				}
 				
-				logLine += " NODE##1";
+				logLine += " NODE##" + fileCount;
 				if(lineCount == 10000)
 				{
 					lineCount = 0;

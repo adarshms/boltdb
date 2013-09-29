@@ -1,7 +1,6 @@
 package edu.uiuc.boltdb.logquerier.utils;
 
-import java.io.Serializable;
-import java.util.ArrayList;
+import java.io.Serializable;;
 
 public class ClientArgs implements Serializable {
 

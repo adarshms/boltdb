@@ -10,8 +10,6 @@ import java.net.InetAddress;
 import java.util.LinkedList;
 import java.util.Properties;
 
-import org.apache.tools.ant.taskdefs.optional.clearcase.ClearCase;
-
 import edu.uiuc.boltdb.logquerier.utils.ClientArgs;
 /**
  * This class represents the distributed log querier client which is run by the dgrep command.
