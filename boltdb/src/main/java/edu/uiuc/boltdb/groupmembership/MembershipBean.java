@@ -1,11 +1,11 @@
 package edu.uiuc.boltdb.groupmembership;
 
 public class MembershipBean {
-	int hearbeatLastReceived;
-	String timeStamp;
+	long hearbeatLastReceived;
+	long timeStamp;
 	boolean toBeDeleted;
 	
-	public MembershipBean(int hearbeatLastReceived, String timeStamp,
+	public MembershipBean(long hearbeatLastReceived, long timeStamp,
 			boolean toBeDeleted) {
 		super();
 		this.hearbeatLastReceived = hearbeatLastReceived;
@@ -13,6 +13,9 @@ public class MembershipBean {
 		this.toBeDeleted = toBeDeleted;
 	}
 	
-	
+	@Override
+	public String toString() {
+		return new String("["+hearbeatLastReceived+" "+timeStamp+" "+toBeDeleted);
+	}
 	
 }
