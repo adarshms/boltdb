@@ -13,6 +13,5 @@ public class HeartbeatIncrementerThread implements Runnable {
 			entry.timeStamp = System.currentTimeMillis();
 			GroupMembership.membershipList.put(GroupMembership.pid, entry);
 		}
-		System.out.println(GroupMembership.membershipList);
 	}
 }

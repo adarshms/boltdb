@@ -15,7 +15,7 @@ public class MembershipBean {
 	
 	@Override
 	public String toString() {
-		return new String("["+hearbeatLastReceived+" "+timeStamp+" "+toBeDeleted);
+		return new String("["+hearbeatLastReceived+" "+timeStamp+" "+toBeDeleted+"]");
 	}
 	
 }
