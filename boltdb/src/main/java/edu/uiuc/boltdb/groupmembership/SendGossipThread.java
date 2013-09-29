@@ -38,13 +38,22 @@ public class SendGossipThread implements Runnable
 	
 	public int getActiveMembersCount()
 	{
-		int activeMembersCount = 0;
-		MembershipBean[] mbeans = (MembershipBean[]) GroupMembership.membershipList.values().toArray();
-		for(MembershipBean mbean : mbeans)
+		try
 		{
-			if(mbean.toBeDeleted)
-				continue;
-			activeMembersCount++;
+			int activeMembersCount = 0;
+			MembershipBean[] mbeans = (MembershipBean[]) GroupMembership.membershipList.values().toArray();
+			for(MembershipBean mbean : mbeans)
+			{
+				if(mbean.toBeDeleted)
+					continue;
+				if((mbean.ipaddress).equals(InetAddress.getLocalHost().getHostAddress()))
+					continue;
+				activeMembersCount++;
+			}
+		}
+		catch(Exception e)
+		{
+			System.out.println("EXCEPTION:In method getActiveMembersCount in SendGossipThread");
 		}
 		return activeMembersCount;
 	}
