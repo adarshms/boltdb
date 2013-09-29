@@ -3,9 +3,11 @@ package edu.uiuc.boltdb.groupmembership;
 import java.net.InetAddress;
 import java.util.Random;
 
+import org.apache.log4j.Logger;
+
 public class SendGossipThread implements Runnable 
 {
-	
+	private static org.apache.log4j.Logger log = Logger.getLogger(SendGossipThread.class);
 	@Override
 	public void run() 
 	{
