@@ -38,9 +38,9 @@ public class SendGossipThread implements Runnable
 	
 	public int getActiveMembersCount()
 	{
+		int activeMembersCount = 0;
 		try
 		{
-			int activeMembersCount = 0;
 			MembershipBean[] mbeans = (MembershipBean[]) GroupMembership.membershipList.values().toArray();
 			for(MembershipBean mbean : mbeans)
 			{
