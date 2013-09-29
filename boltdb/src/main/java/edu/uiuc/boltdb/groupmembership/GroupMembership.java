@@ -13,7 +13,7 @@ public class GroupMembership {
 	public static String pid = null;
 	
 	public static void main(String[] args) throws UnknownHostException {
-		membershipList.put("node2", new MembershipBean(20, System.currentTimeMillis(), false));
+		membershipList.put("node2", new MembershipBean(InetAddress.getLocalHost().getHostAddress(), 20, System.currentTimeMillis(), false));
 		if (args.length != 1) throw new IllegalArgumentException();
 		
 		pid = args[0]+"-"+InetAddress.getLocalHost().getHostAddress()+"-"+System.currentTimeMillis();
