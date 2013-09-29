@@ -24,6 +24,8 @@ public class SendGossipThread implements Runnable
 				MembershipBean mBean = GroupMembership.membershipList.get(keys[generator.nextInt(listSize)]);
 				if(mBean.toBeDeleted)
 					continue;
+				if((mBean.ipaddress).equals(InetAddress.getLocalHost().getHostAddress()))
+					continue;
 				sendMembershipList(mBean.ipaddress);
 				gossipGroupSize--;
 			}
