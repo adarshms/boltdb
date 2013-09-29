@@ -3,8 +3,10 @@ package edu.uiuc.boltdb.groupmembership;
 import java.util.Iterator;
 import java.util.Map;
 
-public class RefreshMembershipListThread implements Runnable {
+import org.apache.log4j.Logger;
 
+public class RefreshMembershipListThread implements Runnable {
+	private static org.apache.log4j.Logger log = Logger.getLogger(RefreshMembershipListThread.class);
 	// TODO take tFail from property file
 	private int tFail = 2;
 

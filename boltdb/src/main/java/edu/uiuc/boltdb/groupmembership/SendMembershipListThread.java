@@ -6,12 +6,15 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.HashMap;
 
+import org.apache.log4j.Logger;
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 
 public class SendMembershipListThread extends Thread 
 {
+	private static org.apache.log4j.Logger log = Logger.getLogger(SendMembershipListThread.class);
 	InetAddress ipaddress;
 	int port;
 	
