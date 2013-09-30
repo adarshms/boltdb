@@ -27,8 +27,8 @@ public class GroupMembership {
 		
 		if (args.length > 2 && args[2].equals("-id")) pid += args[3] + "-";
 		
-		pid += InetAddress.getLocalHost().getHostAddress() + "-" + System.currentTimeMillis();
-		GroupMembership.membershipList.putIfAbsent(GroupMembership.pid, new MembershipBean(InetAddress.getLocalHost().getHostAddress(), 1, System.currentTimeMillis(), false));
+		pid += InetAddress.getLocalHost().getHostName() + "-" + System.currentTimeMillis();
+		GroupMembership.membershipList.putIfAbsent(GroupMembership.pid, new MembershipBean(InetAddress.getLocalHost().getHostName(), 1, System.currentTimeMillis(), false));
 		
 		if (!isContact) {
 			new SendMembershipListThread(InetAddress.getByName("172.16.235.231"), 8764).start();
