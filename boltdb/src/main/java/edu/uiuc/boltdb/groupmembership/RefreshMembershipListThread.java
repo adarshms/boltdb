@@ -23,6 +23,6 @@ public class RefreshMembershipListThread implements Runnable {
 				membershipBean.toBeDeleted = true;
 			}
 		}
-		System.out.println("RefreshMemberShipThread : "+GroupMembership.membershipList);
+		//System.out.println("RefreshMemberShipThread : "+GroupMembership.membershipList);
 	}
 }
