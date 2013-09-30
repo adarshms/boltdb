@@ -19,7 +19,7 @@ public class SendGossipThread implements Runnable
 			
 			Random generator = new Random();
 			Object[] keys = GroupMembership.membershipList.keySet().toArray(); 
-			while(gossipGroupSize >= 0)
+			while(gossipGroupSize > 0)
 			{
 				MembershipBean mBean = GroupMembership.membershipList.get(keys[generator.nextInt(listSize)]);
 				if(mBean.toBeDeleted)

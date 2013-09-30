@@ -5,6 +5,9 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.log4j.Logger;
 
@@ -31,7 +34,16 @@ public class SendMembershipListThread extends Thread
 			DatagramSocket clientSocket = new DatagramSocket();
 			Gson gson = new GsonBuilder().create();
 			Type typeOfHashMap = new TypeToken<HashMap<String, MembershipBean>>(){}.getType();
-			String json = gson.toJson(GroupMembership.membershipList, typeOfHashMap);
+			Iterator<Map.Entry<String, MembershipBean>> iterator = GroupMembership.membershipList.entrySet().iterator();
+			HashMap<String,MembershipBean> listToSend = new HashMap<String,MembershipBean>();
+			while (iterator.hasNext()) 
+			{
+				Map.Entry<String, MembershipBean> entry = iterator.next();
+				if(entry.getValue().toBeDeleted)
+					continue;
+				listToSend.put(entry.getKey(), entry.getValue());
+			}	
+			String json = gson.toJson(listToSend, typeOfHashMap);
 			byte[] jsonBytes = json.getBytes();
 			DatagramPacket dataPacket = new DatagramPacket(jsonBytes, jsonBytes.length, ipaddress, port);
 			clientSocket.send(dataPacket);

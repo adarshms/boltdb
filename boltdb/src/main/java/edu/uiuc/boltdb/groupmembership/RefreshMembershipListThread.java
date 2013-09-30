@@ -25,5 +25,4 @@ public class RefreshMembershipListThread implements Runnable {
 		}
 		System.out.println("RefreshMemberShipThread : "+GroupMembership.membershipList);
 	}
-
 }
