@@ -15,7 +15,7 @@ public class GroupMembership {
 	public static String pid = new String();
 	
 	public static void main(String[] args) throws IOException {
-		if(args.length < 1 || args[0] != "-contact") {
+		if(args.length < 1 || !(args[0].equals("-contact"))) {
 			System.out.println("Usage: groupmembership -contact <true/false> [-id <id>]");
 			System.exit(1);
 		}
