@@ -31,13 +31,13 @@ public class GroupMembership {
 		GroupMembership.membershipList.putIfAbsent(GroupMembership.pid, new MembershipBean(InetAddress.getLocalHost().getHostAddress(), 1, System.currentTimeMillis(), false));
 		
 		if (!isContact) {
-			
+			new SendMembershipListThread(InetAddress.getByName("172.16.235.231"), 8764).start();
 		}
 		
 		ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
-		/*scheduler.scheduleAtFixedRate(new HeartbeatIncrementerThread(), 0, 1000, TimeUnit.MILLISECONDS);
+		scheduler.scheduleAtFixedRate(new HeartbeatIncrementerThread(), 0, 1000, TimeUnit.MILLISECONDS);
 		scheduler.scheduleAtFixedRate(new RefreshMembershipListThread(), 0, 1000, TimeUnit.MILLISECONDS);
-		*/
+		
 		scheduler.scheduleAtFixedRate(new SendGossipThread(), 0, 1000, TimeUnit.MILLISECONDS);
 		Thread receiveGossip = new Thread(new ReceiveGossipThread());
 		receiveGossip.start();
