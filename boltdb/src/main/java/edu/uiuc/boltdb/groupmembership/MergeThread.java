@@ -30,6 +30,7 @@ public class MergeThread implements Runnable {
 			return;
 		}
 		mergeIncomingMembershipList();
+		System.out.println("Membership list after merge:"+GroupMembership.membershipList);
 	}
 
 	private void getGossipFromClient() throws IOException {
@@ -40,7 +41,7 @@ public class MergeThread implements Runnable {
 		while ((line = inFromServer.readLine()) != null) {
 			incomingGossipInJson.append(line);
 		}
-		
+		System.out.println(GroupMembership.pid+"-Rcved-"+incomingGossipInJson);
 		Gson gson = new GsonBuilder().create();
 		Type typeOfMap = new TypeToken<HashMap<String,MembershipBean>>(){}.getType();
 		incomingMembershipList = gson.fromJson(incomingGossipInJson.toString(), typeOfMap);

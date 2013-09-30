@@ -14,7 +14,7 @@ import com.google.gson.reflect.TypeToken;
 
 public class SendMembershipListThread extends Thread 
 {
-	private static org.apache.log4j.Logger log = Logger.getLogger(SendMembershipListThread.class);
+	//private static org.apache.log4j.Logger log = Logger.getLogger(SendMembershipListThread.class);
 	InetAddress ipaddress;
 	int port;
 	
@@ -32,6 +32,7 @@ public class SendMembershipListThread extends Thread
 			Gson gson = new GsonBuilder().create();
 			Type typeOfHashMap = new TypeToken<HashMap<String, MembershipBean>>(){}.getType();
 			String json = gson.toJson(GroupMembership.membershipList, typeOfHashMap);
+			System.out.println(GroupMembership.pid+"-Sending "+json);
 			byte[] jsonBytes = json.getBytes();
 			DatagramPacket dataPacket = new DatagramPacket(jsonBytes, jsonBytes.length, ipaddress, port);
 			clientSocket.send(dataPacket);

@@ -1,13 +1,14 @@
 package edu.uiuc.boltdb.groupmembership;
 
 import java.net.InetAddress;
+import java.util.Collection;
 import java.util.Random;
 
 import org.apache.log4j.Logger;
 
 public class SendGossipThread implements Runnable 
 {
-	private static org.apache.log4j.Logger log = Logger.getLogger(SendGossipThread.class);
+	//private static org.apache.log4j.Logger log = Logger.getLogger(SendGossipThread.class);
 	@Override
 	public void run() 
 	{
@@ -19,7 +20,9 @@ public class SendGossipThread implements Runnable
 			
 			Random generator = new Random();
 			Object[] keys = GroupMembership.membershipList.keySet().toArray(); 
-			while(gossipGroupSize >= 0)
+			//Need to remove below line or make it configurable
+			int maxTries = 10;
+			while(gossipGroupSize >= 0 && maxTries-- > 0)
 			{
 				MembershipBean mBean = GroupMembership.membershipList.get(keys[generator.nextInt(listSize)]);
 				if(mBean.toBeDeleted)
@@ -38,10 +41,10 @@ public class SendGossipThread implements Runnable
 	
 	public int getActiveMembersCount()
 	{
+		int activeMembersCount = 0;
 		try
 		{
-			int activeMembersCount = 0;
-			MembershipBean[] mbeans = (MembershipBean[]) GroupMembership.membershipList.values().toArray();
+			Collection<MembershipBean> mbeans = GroupMembership.membershipList.values();
 			for(MembershipBean mbean : mbeans)
 			{
 				if(mbean.toBeDeleted)
@@ -53,6 +56,7 @@ public class SendGossipThread implements Runnable
 		}
 		catch(Exception e)
 		{
+			System.out.println(e.getMessage());
 			System.out.println("EXCEPTION:In method getActiveMembersCount in SendGossipThread");
 		}
 		return activeMembersCount;
@@ -62,7 +66,7 @@ public class SendGossipThread implements Runnable
 	{
 		try
 		{
-			Thread newThread = new SendMembershipListThread(InetAddress.getByName(ipaddress), 8888);
+			Thread newThread = new SendMembershipListThread(InetAddress.getByName(ipaddress), 8764);
 			newThread.start();
 		}
 		catch(Exception e)

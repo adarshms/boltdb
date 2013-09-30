@@ -7,7 +7,7 @@ import java.net.Socket;
 public class ReceiveGossipThread implements Runnable {
 
 	private ServerSocket serverSocket;
-	private int gossipPort = 8888;
+	private int gossipPort = 8764;
 	public ReceiveGossipThread() throws IOException {
 		serverSocket = new ServerSocket(gossipPort);
 	}
