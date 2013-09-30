@@ -6,11 +6,11 @@ import java.util.Random;
 
 import org.apache.log4j.Logger;
 
-public class SendGossipThread implements Runnable 
+public class SendGossipThread implements Runnable
 {
 	//private static org.apache.log4j.Logger log = Logger.getLogger(SendGossipThread.class);
 	@Override
-	public void run() 
+	public void run()
 	{
 		try
 		{
@@ -45,11 +45,11 @@ public class SendGossipThread implements Runnable
 		try
 		{
 			Collection<MembershipBean> mbeans = GroupMembership.membershipList.values();
-			for(MembershipBean mbean : mbeans)
+			for(MembershipBean mBean : mbeans)
 			{
-				if(mbean.toBeDeleted)
+				if(mBean.toBeDeleted)
 					continue;
-				if((mbean.ipaddress).equals(InetAddress.getLocalHost().getHostAddress()))
+				if((mBean.ipaddress).equals(InetAddress.getLocalHost().getHostAddress()))
 					continue;
 				activeMembersCount++;
 			}
@@ -58,6 +58,7 @@ public class SendGossipThread implements Runnable
 		{
 			System.out.println(e.getMessage());
 			System.out.println("EXCEPTION:In method getActiveMembersCount in SendGossipThread");
+			e.printStackTrace();
 		}
 		return activeMembersCount;
 	}

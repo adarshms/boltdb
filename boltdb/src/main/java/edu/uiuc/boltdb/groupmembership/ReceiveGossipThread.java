@@ -8,6 +8,7 @@ public class ReceiveGossipThread implements Runnable {
 
 	private ServerSocket serverSocket;
 	private int gossipPort = 8764;
+
 	public ReceiveGossipThread() throws IOException {
 		serverSocket = new ServerSocket(gossipPort);
 	}
