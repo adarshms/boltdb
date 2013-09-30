@@ -1,13 +1,14 @@
 package edu.uiuc.boltdb.groupmembership;
 
 import java.net.InetAddress;
+import java.util.Collection;
 import java.util.Random;
 
 import org.apache.log4j.Logger;
 
 public class SendGossipThread implements Runnable
 {
-	private static org.apache.log4j.Logger log = Logger.getLogger(SendGossipThread.class);
+	//private static org.apache.log4j.Logger log = Logger.getLogger(SendGossipThread.class);
 	@Override
 	public void run()
 	{
@@ -41,10 +42,9 @@ public class SendGossipThread implements Runnable
 		int activeMembersCount = 0;
 		try
 		{
-			Object[] valueObjects = GroupMembership.membershipList.values().toArray();
-			for(Object valueObject : valueObjects)
+			Collection<MembershipBean> mbeans = GroupMembership.membershipList.values();
+			for(MembershipBean mBean : mbeans)
 			{
-				MembershipBean mBean = (MembershipBean)valueObject;
 				if(mBean.toBeDeleted)
 					continue;
 				if((mBean.ipaddress).equals(InetAddress.getLocalHost().getHostAddress()))
@@ -54,6 +54,7 @@ public class SendGossipThread implements Runnable
 		}
 		catch(Exception e)
 		{
+			System.out.println(e.getMessage());
 			System.out.println("EXCEPTION:In method getActiveMembersCount in SendGossipThread");
 			e.printStackTrace();
 		}
@@ -64,7 +65,7 @@ public class SendGossipThread implements Runnable
 	{
 		try
 		{
-			Thread newThread = new SendMembershipListThread(InetAddress.getByName(ipaddress), 8190);
+			Thread newThread = new SendMembershipListThread(InetAddress.getByName(ipaddress), 8764);
 			newThread.start();
 		}
 		catch(Exception e)

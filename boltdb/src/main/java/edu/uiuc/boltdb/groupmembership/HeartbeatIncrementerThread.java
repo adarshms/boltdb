@@ -5,7 +5,7 @@ import java.net.InetAddress;
 import org.apache.log4j.Logger;
 
 public class HeartbeatIncrementerThread implements Runnable {
-	private static org.apache.log4j.Logger log = Logger.getLogger(HeartbeatIncrementerThread.class);
+	//private static org.apache.log4j.Logger log = Logger.getLogger(HeartbeatIncrementerThread.class);
 	@Override
 	public void run() {
 		try{

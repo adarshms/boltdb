@@ -10,15 +10,30 @@ import java.util.concurrent.TimeUnit;
 import org.apache.log4j.Logger;
 
 public class GroupMembership {
-	private static org.apache.log4j.Logger log = Logger.getLogger(GroupMembership.class);
+	//private static org.apache.log4j.Logger log = Logger.getLogger(GroupMembership.class);
 	public static ConcurrentHashMap<String,MembershipBean> membershipList = new ConcurrentHashMap<String,MembershipBean>();
-	public static String pid = null;
+	public static String pid = new String();
 	
 	public static void main(String[] args) throws IOException {
-		membershipList.put("node2", new MembershipBean(InetAddress.getLocalHost().getHostAddress(), 20, System.currentTimeMillis(), false));
-		if (args.length != 1) throw new IllegalArgumentException();
+		if(args.length < 1 || args[0] != "-contact") {
+			System.out.println("Usage: groupmembership -contact <true/false> [-id <id>]");
+			System.exit(1);
+		}
 		
-		pid = args[0]+"-"+InetAddress.getLocalHost().getHostAddress()+"-"+System.currentTimeMillis();
+		boolean isContact = false;
+		
+		if(args[1].equals("true")) isContact = true;
+		
+		
+		if (args.length > 2 && args[2].equals("-id")) pid += args[3] + "-";
+		
+		pid += InetAddress.getLocalHost().getHostAddress() + "-" + System.currentTimeMillis();
+		GroupMembership.membershipList.putIfAbsent(GroupMembership.pid, new MembershipBean(InetAddress.getLocalHost().getHostAddress(), 1, System.currentTimeMillis(), false));
+		
+		if (!isContact) {
+			
+		}
+		
 		ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 		/*scheduler.scheduleAtFixedRate(new HeartbeatIncrementerThread(), 0, 1000, TimeUnit.MILLISECONDS);
 		scheduler.scheduleAtFixedRate(new RefreshMembershipListThread(), 0, 1000, TimeUnit.MILLISECONDS);
