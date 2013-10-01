@@ -31,7 +31,7 @@ public class GroupMembership {
 		GroupMembership.membershipList.putIfAbsent(GroupMembership.pid, new MembershipBean(InetAddress.getLocalHost().getHostName(), 1, System.currentTimeMillis(), false));
 		
 		if (!isContact) {
-			new SendMembershipListThread(InetAddress.getByName("172.16.235.231"), 8764).start();
+			new SendMembershipListThread("siebl-0218-15.ews.illinois.edu", 8764).start();
 		}
 		
 		ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();

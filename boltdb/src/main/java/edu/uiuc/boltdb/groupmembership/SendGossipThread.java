@@ -17,17 +17,18 @@ public class SendGossipThread implements Runnable
 			int listSize = GroupMembership.membershipList.size();
 			int activeMembersListSize = getActiveMembersCount();
 			int gossipGroupSize = (int) Math.sqrt(activeMembersListSize);
-			
+			//System.out.println("Active group size:"+activeMembersListSize + 1);
 			Random generator = new Random();
 			Object[] keys = GroupMembership.membershipList.keySet().toArray(); 
-			while(gossipGroupSize > 0)
+			int maxTries = 100;
+			while(gossipGroupSize > 0 && (maxTries-- > 0))
 			{
 				MembershipBean mBean = GroupMembership.membershipList.get(keys[generator.nextInt(listSize)]);
 				if(mBean.toBeDeleted)
 					continue;
-				if((mBean.ipaddress).equals(InetAddress.getLocalHost().getHostName()))
+				if((mBean.hostname).equals(InetAddress.getLocalHost().getHostName()))
 					continue;
-				sendMembershipList(mBean.ipaddress);
+				sendMembershipList(mBean.hostname);
 				gossipGroupSize--;
 			}
 		}
@@ -47,7 +48,7 @@ public class SendGossipThread implements Runnable
 			{
 				if(mBean.toBeDeleted)
 					continue;
-				if((mBean.ipaddress).equals(InetAddress.getLocalHost().getHostAddress()))
+				if((mBean.hostname).equals(InetAddress.getLocalHost().getHostName()))
 					continue;
 				activeMembersCount++;
 			}
@@ -61,11 +62,11 @@ public class SendGossipThread implements Runnable
 		return activeMembersCount;
 	}
 	
-	public void sendMembershipList(String ipaddress)
+	public void sendMembershipList(String hostname)
 	{
 		try
 		{
-			Thread newThread = new SendMembershipListThread(InetAddress.getByName(ipaddress), 8764);
+			Thread newThread = new SendMembershipListThread(hostname, 8764);
 			newThread.start();
 		}
 		catch(Exception e)

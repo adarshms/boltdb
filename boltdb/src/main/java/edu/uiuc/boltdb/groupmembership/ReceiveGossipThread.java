@@ -1,33 +1,52 @@
 package edu.uiuc.boltdb.groupmembership;
 
 import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.net.ServerSocket;
 import java.net.Socket;
 
 public class ReceiveGossipThread implements Runnable {
 
-	private ServerSocket serverSocket;
+	private DatagramSocket serverSocket;
 	private int gossipPort = 8764;
+	
 
 	public ReceiveGossipThread() throws IOException {
-		serverSocket = new ServerSocket(gossipPort);
+		serverSocket = new DatagramSocket(gossipPort);
 	}
 	@Override
 	public void run() {
-			
-		while (true) {
+		while(true) {
+		byte[] receiveData = new byte[2048];
+		
+		DatagramPacket receive = new DatagramPacket(receiveData, receiveData.length);
+		try {
+			serverSocket.receive(receive);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		String receivedJson = new String(receive.getData());
+		//System.out.println(receivedJson.trim());
+		MergeThread mergeThread = new MergeThread(receivedJson.trim());
+		new Thread(mergeThread).start();
+		/*while (true) {
 			try {
+				System.out.println("in rcv");
+				
 				Socket clientSocket = serverSocket.accept();
+				System.out.println("connected");
 				MergeThread mergeThread = new MergeThread(clientSocket);
 				//TODO think of failure scenarios here
 				new Thread(mergeThread).start();
 			} catch (IOException e) {
 				System.out.println("Problem accepting client connection.");
 			}
+			*/
 			
 			
-			
-		}
+	}
 		
 	}
 	

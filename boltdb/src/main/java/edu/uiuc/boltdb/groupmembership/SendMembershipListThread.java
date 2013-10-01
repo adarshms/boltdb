@@ -15,12 +15,12 @@ import com.google.gson.reflect.TypeToken;
 public class SendMembershipListThread extends Thread 
 {
 	//private static org.apache.log4j.Logger log = Logger.getLogger(SendMembershipListThread.class);
-	InetAddress ipaddress;
+	String hostname;
 	int port;
 	
-	public SendMembershipListThread(InetAddress ipaddress, int port) 
+	public SendMembershipListThread(String hostname, int port) 
 	{
-		this.ipaddress = ipaddress;
+		this.hostname = hostname;
 		this.port = port;
 	}
 
@@ -41,9 +41,9 @@ public class SendMembershipListThread extends Thread
 				listToSend.put(entry.getKey(), entry.getValue());
 			}	
 			String json = gson.toJson(listToSend, typeOfHashMap);
-			System.out.println(GroupMembership.pid+"-Sending "+json);
+			//System.out.println("\nSENDING : "+json);
 			byte[] jsonBytes = json.getBytes();
-			DatagramPacket dataPacket = new DatagramPacket(jsonBytes, jsonBytes.length, ipaddress, port);
+			DatagramPacket dataPacket = new DatagramPacket(jsonBytes, jsonBytes.length, InetAddress.getByName(hostname), port);
 			clientSocket.send(dataPacket);
 			clientSocket.close();
 		}

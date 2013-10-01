@@ -8,7 +8,7 @@ import org.apache.log4j.Logger;
 public class RefreshMembershipListThread implements Runnable {
 	//private static org.apache.log4j.Logger log = Logger.getLogger(RefreshMembershipListThread.class);
 	// TODO take tFail from property file
-	private int tFail = 2;
+	private int tFail = 4;
 
 	@Override
 	public void run() {
@@ -21,8 +21,9 @@ public class RefreshMembershipListThread implements Runnable {
 				GroupMembership.membershipList.remove(entry.getKey());
 			} else if (System.currentTimeMillis() - membershipBean.timeStamp >= tFail * 1000) {
 				membershipBean.toBeDeleted = true;
+				System.out.println("CRASHED : " + membershipBean.hostname);
 			}
 		}
-		//System.out.println("RefreshMemberShipThread : "+GroupMembership.membershipList);
+		//System.out.println("REFRESH MEMBERSHIP THREAD : "+GroupMembership.membershipList);
 	}
 }
