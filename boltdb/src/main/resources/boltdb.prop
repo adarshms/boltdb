@@ -1,1 +1,6 @@
 machines.address=localhost:6789,localhost:6788
+groupmembership.contact=siebl-0224-21.ews.illinois.edu
+groupmembership.heartbeat.freq=600
+groupmembership.gossip.freq=500
+groupmembership.refreshMembershipList.freq=1000
+groupmembership.tfail=2

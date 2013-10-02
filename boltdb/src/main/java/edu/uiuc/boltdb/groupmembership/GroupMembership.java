@@ -1,7 +1,10 @@
 package edu.uiuc.boltdb.groupmembership;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.util.Date;
+import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -27,18 +30,24 @@ public class GroupMembership {
 		
 		if (args.length > 2 && args[2].equals("-id")) pid += args[3] + "-";
 		
-		pid += InetAddress.getLocalHost().getHostName() + "-" + System.currentTimeMillis();
+		pid += InetAddress.getLocalHost().getHostName() + "-" + (new Date().toString());
 		GroupMembership.membershipList.putIfAbsent(GroupMembership.pid, new MembershipBean(InetAddress.getLocalHost().getHostName(), 1, System.currentTimeMillis(), false));
 		
+		Properties prop = new Properties();
+		FileInputStream fis = new FileInputStream("./boltdb.prop");
+		prop.load(fis);
+		fis.close();
+		
 		if (!isContact) {
-			new SendMembershipListThread("siebl-0218-15.ews.illinois.edu", 8764).start();
+			new SendMembershipListThread(prop.getProperty("groupmembership.contact"), 8764).start();
 		}
 		
+		int tFail = Integer.parseInt(prop.getProperty("groupmembership.tfail"));
 		ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
-		scheduler.scheduleAtFixedRate(new HeartbeatIncrementerThread(), 0, 1000, TimeUnit.MILLISECONDS);
-		scheduler.scheduleAtFixedRate(new RefreshMembershipListThread(), 0, 1000, TimeUnit.MILLISECONDS);
+		scheduler.scheduleAtFixedRate(new HeartbeatIncrementerThread(), 0, Integer.parseInt(prop.getProperty("groupmembership.heartbeat.freq")), TimeUnit.MILLISECONDS);
+		scheduler.scheduleAtFixedRate(new RefreshMembershipListThread(tFail), 0, Integer.parseInt(prop.getProperty("groupmembership.refreshMembershipList.freq")), TimeUnit.MILLISECONDS);
 		
-		scheduler.scheduleAtFixedRate(new SendGossipThread(), 0, 1000, TimeUnit.MILLISECONDS);
+		scheduler.scheduleAtFixedRate(new SendGossipThread(), 0, Integer.parseInt(prop.getProperty("groupmembership.gossip.freq")), TimeUnit.MILLISECONDS);
 		Thread receiveGossip = new Thread(new ReceiveGossipThread());
 		receiveGossip.start();
 	}

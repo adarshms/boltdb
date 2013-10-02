@@ -72,7 +72,7 @@ public class MergeThread implements Runnable {
 			} else {
 				receivedMBean.timeStamp = System.currentTimeMillis();
 				GroupMembership.membershipList.putIfAbsent(receivedPid, receivedMBean);
-				System.out.println("JOINED : " + receivedMBean.hostname);
+				System.out.println("JOINED : " + receivedPid);
 			}
 		}
 	}

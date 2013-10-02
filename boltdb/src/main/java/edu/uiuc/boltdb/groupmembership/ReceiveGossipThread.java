@@ -30,21 +30,7 @@ public class ReceiveGossipThread implements Runnable {
 		String receivedJson = new String(receive.getData());
 		//System.out.println(receivedJson.trim());
 		MergeThread mergeThread = new MergeThread(receivedJson.trim());
-		new Thread(mergeThread).start();
-		/*while (true) {
-			try {
-				System.out.println("in rcv");
-				
-				Socket clientSocket = serverSocket.accept();
-				System.out.println("connected");
-				MergeThread mergeThread = new MergeThread(clientSocket);
-				//TODO think of failure scenarios here
-				new Thread(mergeThread).start();
-			} catch (IOException e) {
-				System.out.println("Problem accepting client connection.");
-			}
-			*/
-			
+		new Thread(mergeThread).start();			
 			
 	}
 		

@@ -2,6 +2,7 @@ package edu.uiuc.boltdb.groupmembership;
 
 import java.net.InetAddress;
 import java.util.Collection;
+import java.util.Date;
 import java.util.Random;
 
 import org.apache.log4j.Logger;
@@ -12,11 +13,12 @@ public class SendGossipThread implements Runnable
 	@Override
 	public void run()
 	{
+		//System.out.println("GOSSIP THREAD STARTED AT:"+new Date().toString());
 		try
 		{
 			int listSize = GroupMembership.membershipList.size();
 			int activeMembersListSize = getActiveMembersCount();
-			int gossipGroupSize = (int) Math.sqrt(activeMembersListSize);
+			int gossipGroupSize = (int) Math.ceil(Math.sqrt(activeMembersListSize));
 			//System.out.println("Active group size:"+activeMembersListSize + 1);
 			Random generator = new Random();
 			Object[] keys = GroupMembership.membershipList.keySet().toArray(); 
@@ -28,9 +30,11 @@ public class SendGossipThread implements Runnable
 					continue;
 				if((mBean.hostname).equals(InetAddress.getLocalHost().getHostName()))
 					continue;
+				//System.out.println("GOSSIP TO:"+mBean.hostname);
 				sendMembershipList(mBean.hostname);
 				gossipGroupSize--;
 			}
+			//System.out.println("DONE GOSSIPPING with tries:"+maxTries);
 		}
 		catch(Exception e)
 		{
