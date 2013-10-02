@@ -12,6 +12,9 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 
+import edu.uiuc.boltdb.groupmembership.beans.MembershipBean;
+import edu.uiuc.boltdb.groupmembership.beans.UDPBean;
+
 public class SendMembershipListThread extends Thread 
 {
 	//private static org.apache.log4j.Logger log = Logger.getLogger(SendMembershipListThread.class);
@@ -30,16 +33,16 @@ public class SendMembershipListThread extends Thread
 		{
 			DatagramSocket clientSocket = new DatagramSocket();
 			Gson gson = new GsonBuilder().create();
-			Type typeOfHashMap = new TypeToken<HashMap<String, MembershipBean>>(){}.getType();
+			Type typeOfHashMap = new TypeToken<HashMap<String, UDPBean>>(){}.getType();
 			Iterator<Map.Entry<String, MembershipBean>> iterator = GroupMembership.membershipList.entrySet().iterator();
-			HashMap<String,MembershipBean> listToSend = new HashMap<String,MembershipBean>();
+			HashMap<String,UDPBean> listToSend = new HashMap<String,UDPBean>();
 			while (iterator.hasNext()) 
 			{
 				Map.Entry<String, MembershipBean> entry = iterator.next();
 				if(entry.getValue().toBeDeleted)
 					continue;
-				listToSend.put(entry.getKey(), entry.getValue());
-			}	
+				listToSend.put(entry.getKey(), new UDPBean(entry.getValue().hearbeatLastReceived));
+			}
 			String json = gson.toJson(listToSend, typeOfHashMap);
 			//System.out.println("\nSENDING : "+json);
 			byte[] jsonBytes = json.getBytes();

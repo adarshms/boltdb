@@ -12,10 +12,13 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.log4j.Logger;
 
+import edu.uiuc.boltdb.groupmembership.beans.MembershipBean;
+
 public class GroupMembership {
 	//private static org.apache.log4j.Logger log = Logger.getLogger(GroupMembership.class);
 	public static ConcurrentHashMap<String,MembershipBean> membershipList = new ConcurrentHashMap<String,MembershipBean>();
 	public static String pid = new String();
+	public static String pidDelimiter = "--";
 	
 	public static void main(String[] args) throws IOException {
 		if(args.length < 1 || !(args[0].equals("-contact"))) {
@@ -28,9 +31,11 @@ public class GroupMembership {
 		if(args[1].equals("true")) isContact = true;
 		
 		
-		if (args.length > 2 && args[2].equals("-id")) pid += args[3] + "-";
 		
-		pid += InetAddress.getLocalHost().getHostName() + "-" + (new Date().toString());
+		
+		pid += InetAddress.getLocalHost().getHostName() + GroupMembership.pidDelimiter + (new Date().toString());
+		if (args.length > 2 && args[2].equals("-id")) pid += "-" + args[3];
+		
 		GroupMembership.membershipList.putIfAbsent(GroupMembership.pid, new MembershipBean(InetAddress.getLocalHost().getHostName(), 1, System.currentTimeMillis(), false));
 		
 		Properties prop = new Properties();

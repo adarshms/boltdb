@@ -13,8 +13,11 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 
+import edu.uiuc.boltdb.groupmembership.beans.MembershipBean;
+import edu.uiuc.boltdb.groupmembership.beans.UDPBean;
+
 public class MergeThread implements Runnable {
-	Map<String,MembershipBean> incomingMembershipList = null;
+	Map<String,UDPBean> incomingMembershipList = null;
 	String receivedJson = new String();
 	public  MergeThread(String json) {
 		this.receivedJson = json;
@@ -34,31 +37,21 @@ public class MergeThread implements Runnable {
 	}
 
 	private void getGossipFromClient() throws IOException {
-		/*BufferedReader inFromServer = new BufferedReader(
-				new InputStreamReader(clientSocket.getInputStream()));
-		String line;
-		StringBuilder incomingGossipInJson = new StringBuilder();
-		while ((line = inFromServer.readLine()) != null) {
-			incomingGossipInJson.append(line);
-		}*/
-		//System.out.println("\nRECEIVED : "+ receivedJson);
 		Gson gson = new GsonBuilder().create();
-		Type typeOfMap = new TypeToken<HashMap<String,MembershipBean>>(){}.getType();
+		Type typeOfMap = new TypeToken<HashMap<String,UDPBean>>(){}.getType();
 		incomingMembershipList = gson.fromJson(receivedJson, typeOfMap);
-		//clientSocket.close();
 	}
 	
 	private void mergeIncomingMembershipList() {
 		//System.out.println("IN MERGE with incoming mapsize:"+incomingMembershipList.size());
 		
-		Iterator<Map.Entry<String, MembershipBean>> iterator = incomingMembershipList.entrySet().iterator();
-		boolean membershipListModified = false;
+		Iterator<Map.Entry<String, UDPBean>> iterator = incomingMembershipList.entrySet().iterator();
 		while (iterator.hasNext()) {
-			Map.Entry<String, MembershipBean> entry = iterator.next();
+			Map.Entry<String, UDPBean> entry = iterator.next();
 			String receivedPid = entry.getKey();
-			MembershipBean receivedMBean = entry.getValue();
+			UDPBean receivedMBean = entry.getValue();
 			
-			if(receivedMBean.toBeDeleted) continue;
+			//if(receivedMBean.toBeDeleted) continue;
 			if(GroupMembership.membershipList.containsKey(receivedPid)) {
 				MembershipBean currentMBean = GroupMembership.membershipList.get(receivedPid);
 				if (currentMBean.toBeDeleted) continue;
@@ -70,9 +63,12 @@ public class MergeThread implements Runnable {
 					//System.out.println("CURRENTMBEAN : " + currentMBean);
 				}
 			} else {
-				receivedMBean.timeStamp = System.currentTimeMillis();
-				GroupMembership.membershipList.putIfAbsent(receivedPid, receivedMBean);
-				System.out.println("JOINED : " + receivedPid);
+				String receivedHost = receivedPid.split(GroupMembership.pidDelimiter)[0];
+				MembershipBean mBean = new MembershipBean(receivedHost, receivedMBean.hearbeatLastReceived, System.currentTimeMillis(), false);
+				MembershipBean returnVal = GroupMembership.membershipList.putIfAbsent(receivedPid, mBean);
+				if (returnVal == null) {
+					System.out.println("JOINED : " + receivedPid);
+				}
 			}
 		}
 	}

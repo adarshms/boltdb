@@ -1,16 +1,14 @@
-package edu.uiuc.boltdb.groupmembership;
+package edu.uiuc.boltdb.groupmembership.beans;
 
-public class MembershipBean {
-	String hostname;
-	long hearbeatLastReceived;
-	long timeStamp;
-	boolean toBeDeleted;
+public class MembershipBean extends UDPBean {
+	public String hostname;
+	public long timeStamp;
+	public boolean toBeDeleted;
 	
 	public MembershipBean(String ipaddress, long hearbeatLastReceived, long timeStamp,
 			boolean toBeDeleted) {
-		super();
+		super(hearbeatLastReceived);
 		this.hostname = ipaddress;
-		this.hearbeatLastReceived = hearbeatLastReceived;
 		this.timeStamp = timeStamp;
 		this.toBeDeleted = toBeDeleted;
 	}
