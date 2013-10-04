@@ -13,8 +13,9 @@ import edu.uiuc.boltdb.groupmembership.beans.MembershipBean;
 
 public class SendGossipThread implements Runnable
 {
+	int lossRate;
 	//private static org.apache.log4j.Logger log = Logger.getLogger(SendGossipThread.class);
-	@Override
+	//@Override
 	public void run()
 	{
 		//System.out.println("GOSSIP THREAD STARTED AT:"+new Date().toString());
@@ -73,7 +74,13 @@ public class SendGossipThread implements Runnable
 	public void sendMembershipList(String hostname)
 	{
 		try
-		{
+		{	// Simulate packet loss
+			
+			// Generate a random number between 0 and 100. If the generated random number is 
+			// in between 0 and the specified lossRate, skip sending the packet.
+			Random generator = new Random();
+			if(generator.nextInt(100) < lossRate)
+				return;
 			Thread newThread = new SendMembershipListThread(hostname, 8764);
 			newThread.start();
 		}

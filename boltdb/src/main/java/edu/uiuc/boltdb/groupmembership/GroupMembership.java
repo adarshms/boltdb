@@ -15,9 +15,10 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
 
-import edu.uiuc.boltdb.groupmembership.beans.MembershipBean;
+import edu.uiuc.boltdb.groupmembership.beans.*;
 
-public class GroupMembership {
+public class GroupMembership 
+{
 	private static org.apache.log4j.Logger log = Logger.getRootLogger();
 	public static ConcurrentHashMap<String,MembershipBean> membershipList = new ConcurrentHashMap<String,MembershipBean>();
 	public static String pid = new String();
@@ -28,26 +29,23 @@ public class GroupMembership {
 		FileAppender fa = new FileAppender();
 		fa.setName("FileLogger");
 		fa.setFile(serverId + ".log");
-		//fa.setLayout(new PatternLayout("%-5p [%t]: %m%n"));
-		fa.setLayout(new PatternLayout("%m"));
+		fa.setLayout(new PatternLayout("%m%n"));
 		fa.setThreshold(Level.INFO);
 		fa.setAppend(true);
 		fa.activateOptions();
 		log.addAppender(fa);
 	}
 	
-	public static void main(String[] args) throws IOException {
-		if(args.length < 1 || !(args[0].equals("-contact"))) {
+	public static void main(String[] args) throws IOException 
+	{
+		if(args.length < 1 || !(args[0].equals("-contact"))) 
+		{
 			System.out.println("Usage: groupmembership -contact <true/false> [-id <id>]");
 			System.exit(1);
 		}
-		
 		boolean isContact = false;
-		
-		if(args[1].equals("true")) isContact = true;
-		
-		
-		
+		if(args[1].equals("true")) 
+			isContact = true;
 		
 		pid += InetAddress.getLocalHost().getHostName() + GroupMembership.pidDelimiter + (new Date().toString());
 		if (args.length > 2 && args[2].equals("-id"))
@@ -62,7 +60,8 @@ public class GroupMembership {
 		prop.load(fis);
 		fis.close();
 		
-		if (!isContact) {
+		if (!isContact) 
+		{
 			new SendMembershipListThread(prop.getProperty("groupmembership.contact"), 8764).start();
 		}
 		
