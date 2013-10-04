@@ -1,7 +1,9 @@
 package edu.uiuc.boltdb.groupmembership;
 
+import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.util.Date;
 import java.util.Properties;
@@ -36,7 +38,7 @@ public class GroupMembership
 		log.addAppender(fa);
 	}
 	
-	public static void main(String[] args) throws IOException 
+	public static void main(String[] args) throws IOException, InterruptedException 
 	{
 		if(args.length < 1 || !(args[0].equals("-contact"))) 
 		{
@@ -73,5 +75,22 @@ public class GroupMembership
 		scheduler.scheduleAtFixedRate(new SendGossipThread(), 0, Integer.parseInt(prop.getProperty("groupmembership.gossip.freq")), TimeUnit.MILLISECONDS);
 		Thread receiveGossip = new Thread(new ReceiveGossipThread());
 		receiveGossip.start();
+		
+		BufferedReader bufferRead = new BufferedReader(new InputStreamReader(System.in));
+		while(true) {
+			String s = bufferRead.readLine();
+			if(s.equals("leave")) {
+				receiveGossip.stop();
+				scheduler.shutdownNow();
+				scheduler.awaitTermination(100, TimeUnit.MILLISECONDS);
+				MembershipBean mBean = membershipList.get(pid);
+				mBean.hearbeatLastReceived = -1;
+				mBean.timeStamp = System.currentTimeMillis();
+				membershipList.put(pid, mBean);
+				Thread gossipOneLastTime = new Thread(new SendGossipThread());
+				gossipOneLastTime.start();
+				break;
+			}
+		}
 	}
 }

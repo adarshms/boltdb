@@ -31,8 +31,9 @@ public class ReceiveGossipThread implements Runnable
 				e.printStackTrace();
 			}
 			String receivedJson = new String(receive.getData());
+			String sentHost = receive.getAddress().getHostName();
 			//System.out.println(receivedJson.trim());
-			MergeThread mergeThread = new MergeThread(receivedJson.trim());
+			MergeThread mergeThread = new MergeThread(sentHost,receivedJson.trim());
 			new Thread(mergeThread).start();			
 		}
 	}

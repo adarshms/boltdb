@@ -20,6 +20,7 @@ public class HeartbeatIncrementerThread implements Runnable
 			} 
 			else 
 			{
+				if(entry.hearbeatLastReceived <= 0) return;
 				entry.hearbeatLastReceived++;
 				entry.timeStamp = System.currentTimeMillis();
 				GroupMembership.membershipList.put(GroupMembership.pid, entry);

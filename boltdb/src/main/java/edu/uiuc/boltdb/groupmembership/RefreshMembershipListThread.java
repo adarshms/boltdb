@@ -27,6 +27,16 @@ public class RefreshMembershipListThread implements Runnable
 		{
 			Map.Entry<String, MembershipBean> entry = iterator.next();
 			MembershipBean membershipBean = entry.getValue();
+			
+			if(membershipBean.hearbeatLastReceived <= 0 && entry.getKey().equals(GroupMembership.pid)) {
+				continue;
+			} /*else if (membershipBean.hearbeatLastReceived == -1) {
+				membershipBean.hearbeatLastReceived++;
+				continue;
+			} else if (membershipBean.hearbeatLastReceived == 0) {
+				GroupMembership.membershipList.remove(entry.getKey());
+				continue;
+			}*/
 			if (membershipBean.toBeDeleted) 
 			{
 				GroupMembership.membershipList.remove(entry.getKey());
@@ -34,8 +44,10 @@ public class RefreshMembershipListThread implements Runnable
 			else if (System.currentTimeMillis() - membershipBean.timeStamp >= tFail * 1000) 
 			{
 				membershipBean.toBeDeleted = true;
-				System.out.println("CRASHED : " + entry.getKey() +" at " + new Date().toString());
-				log.info("CRASHED - - - " + entry.getKey());
+				if (membershipBean.hearbeatLastReceived > 0) {
+					System.out.println("CRASHED : " + entry.getKey() +" at " + new Date().toString());
+					log.info("CRASHED - - - " + entry.getKey());
+				}
 			}
 		}
 		//System.out.println("REFRESH MEMBERSHIP THREAD : "+GroupMembership.membershipList);
