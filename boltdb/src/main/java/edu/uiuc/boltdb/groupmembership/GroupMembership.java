@@ -62,19 +62,29 @@ public class GroupMembership
 		prop.load(fis);
 		fis.close();
 		
+		Thread receiveGossip = new Thread(new ReceiveGossipThread());
+		receiveGossip.start();
 		if (!isContact) 
 		{
-			new SendMembershipListThread(prop.getProperty("groupmembership.contact"), 8764).start();
+			int maxTries = 10;
+			while(maxTries-- > 0)
+			{
+				new SendMembershipListThread(prop.getProperty("groupmembership.contact"), 8764).start();
+				try {
+					Thread.sleep(1000);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				if(GroupMembership.membershipList.size() > 1) break;
+			}
 		}
 		
 		int tFail = Integer.parseInt(prop.getProperty("groupmembership.tfail"));
 		ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 		scheduler.scheduleAtFixedRate(new HeartbeatIncrementerThread(), 0, Integer.parseInt(prop.getProperty("groupmembership.heartbeat.freq")), TimeUnit.MILLISECONDS);
 		scheduler.scheduleAtFixedRate(new RefreshMembershipListThread(tFail), 0, Integer.parseInt(prop.getProperty("groupmembership.refreshMembershipList.freq")), TimeUnit.MILLISECONDS);
-		
-		scheduler.scheduleAtFixedRate(new SendGossipThread(), 0, Integer.parseInt(prop.getProperty("groupmembership.gossip.freq")), TimeUnit.MILLISECONDS);
-		Thread receiveGossip = new Thread(new ReceiveGossipThread());
-		receiveGossip.start();
+		scheduler.scheduleAtFixedRate(new SendGossipThread(Integer.parseInt(prop.getProperty("groupmembership.lossrate"))), 0, Integer.parseInt(prop.getProperty("groupmembership.gossip.freq")), TimeUnit.MILLISECONDS);
 		
 		BufferedReader bufferRead = new BufferedReader(new InputStreamReader(System.in));
 		while(true) {
@@ -87,10 +97,11 @@ public class GroupMembership
 				mBean.hearbeatLastReceived = -1;
 				mBean.timeStamp = System.currentTimeMillis();
 				membershipList.put(pid, mBean);
-				Thread gossipOneLastTime = new Thread(new SendGossipThread());
+				Thread gossipOneLastTime = new Thread(new SendGossipThread(0));
 				gossipOneLastTime.start();
 				break;
 			}
 		}
+
 	}
 }
