@@ -9,6 +9,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+import org.apache.log4j.Logger;
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
@@ -17,6 +19,7 @@ import edu.uiuc.boltdb.groupmembership.beans.MembershipBean;
 import edu.uiuc.boltdb.groupmembership.beans.UDPBean;
 
 public class MergeThread implements Runnable {
+	private static org.apache.log4j.Logger log = Logger.getRootLogger();
 	Map<String,UDPBean> incomingMembershipList = null;
 	String receivedJson = new String();
 	public  MergeThread(String json) {
@@ -68,6 +71,7 @@ public class MergeThread implements Runnable {
 				MembershipBean returnVal = GroupMembership.membershipList.putIfAbsent(receivedPid, mBean);
 				if (returnVal == null) {
 					System.out.println("JOINED : " + receivedPid);
+					log.info("JOINED - - - " + receivedPid);
 				}
 			}
 		}

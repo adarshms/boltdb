@@ -118,17 +118,17 @@ public class LogQuerierServerThread extends Thread
 		// Build the command using the keyRegExp and valRegExp
 		if(!(keyRegExp.isEmpty()) && !(valRegExp.isEmpty()))
 		{
-			command = "grep" + options + " -E '(" + keyRegExp + ":" + valRegExp + ")' " + logFileName;
+			command = "grep" + options + " -E '(" + keyRegExp + " - - - " + valRegExp + ")' " + logFileName;
 			return command;
 		}
 		if(!keyRegExp.isEmpty())
 		{
-			command = "grep" + options + " -E '(" + keyRegExp + ":)' " + logFileName;
+			command = "grep" + options + " -E '(" + keyRegExp + " - - - )' " + logFileName;
 			return command;
 		}
 		if(!valRegExp.isEmpty())
 		{
-			command = "grep" + options + " -E '(:" + valRegExp + ")' " + logFileName;
+			command = "grep" + options + " -E '( - - - " + valRegExp + ")' " + logFileName;
 			return command;
 		}
 		return command;

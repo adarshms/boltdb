@@ -9,6 +9,8 @@ import org.apache.log4j.Logger;
 
 import edu.uiuc.boltdb.groupmembership.beans.MembershipBean;
 
+
+
 public class SendGossipThread implements Runnable
 {
 	//private static org.apache.log4j.Logger log = Logger.getLogger(SendGossipThread.class);

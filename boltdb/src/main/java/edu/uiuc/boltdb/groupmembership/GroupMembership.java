@@ -10,15 +10,31 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.log4j.FileAppender;
+import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
+import org.apache.log4j.PatternLayout;
 
 import edu.uiuc.boltdb.groupmembership.beans.MembershipBean;
 
 public class GroupMembership {
-	//private static org.apache.log4j.Logger log = Logger.getLogger(GroupMembership.class);
+	private static org.apache.log4j.Logger log = Logger.getRootLogger();
 	public static ConcurrentHashMap<String,MembershipBean> membershipList = new ConcurrentHashMap<String,MembershipBean>();
 	public static String pid = new String();
 	public static String pidDelimiter = "--";
+	
+	public static void initializeLogger(String serverId)
+	{
+		FileAppender fa = new FileAppender();
+		fa.setName("FileLogger");
+		fa.setFile(serverId + ".log");
+		//fa.setLayout(new PatternLayout("%-5p [%t]: %m%n"));
+		fa.setLayout(new PatternLayout("%m"));
+		fa.setThreshold(Level.INFO);
+		fa.setAppend(true);
+		fa.activateOptions();
+		log.addAppender(fa);
+	}
 	
 	public static void main(String[] args) throws IOException {
 		if(args.length < 1 || !(args[0].equals("-contact"))) {
@@ -34,8 +50,11 @@ public class GroupMembership {
 		
 		
 		pid += InetAddress.getLocalHost().getHostName() + GroupMembership.pidDelimiter + (new Date().toString());
-		if (args.length > 2 && args[2].equals("-id")) pid += "-" + args[3];
-		
+		if (args.length > 2 && args[2].equals("-id"))
+		{
+			pid += "-" + args[3];
+			initializeLogger(args[3]);
+		}
 		GroupMembership.membershipList.putIfAbsent(GroupMembership.pid, new MembershipBean(InetAddress.getLocalHost().getHostName(), 1, System.currentTimeMillis(), false));
 		
 		Properties prop = new Properties();

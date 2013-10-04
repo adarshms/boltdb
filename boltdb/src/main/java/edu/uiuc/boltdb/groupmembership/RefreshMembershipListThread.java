@@ -9,7 +9,7 @@ import org.apache.log4j.Logger;
 import edu.uiuc.boltdb.groupmembership.beans.MembershipBean;
 
 public class RefreshMembershipListThread implements Runnable {
-	//private static org.apache.log4j.Logger log = Logger.getLogger(RefreshMembershipListThread.class);
+	private static org.apache.log4j.Logger log = Logger.getRootLogger();
 	// TODO take tFail from property file
 	public RefreshMembershipListThread(int tFail) {
 		this.tFail = tFail;
@@ -28,6 +28,7 @@ public class RefreshMembershipListThread implements Runnable {
 			} else if (System.currentTimeMillis() - membershipBean.timeStamp >= tFail * 1000) {
 				membershipBean.toBeDeleted = true;
 				System.out.println("CRASHED : " + entry.getKey() +" at " + new Date().toString());
+				log.info("CRASHED - - - " + entry.getKey());
 			}
 		}
 		//System.out.println("REFRESH MEMBERSHIP THREAD : "+GroupMembership.membershipList);
