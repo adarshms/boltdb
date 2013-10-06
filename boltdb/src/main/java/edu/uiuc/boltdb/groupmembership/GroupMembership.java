@@ -18,6 +18,7 @@ import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
 
 import edu.uiuc.boltdb.groupmembership.beans.*;
+
 /**This class is the entry point for Distributed Group Membership.
  * It takes two arguments - 
  * 1) -contact <true/false> : true if its the contact machine,false otherwise

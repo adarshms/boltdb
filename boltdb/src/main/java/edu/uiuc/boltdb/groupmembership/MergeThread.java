@@ -1,10 +1,7 @@
 package edu.uiuc.boltdb.groupmembership;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.lang.reflect.Type;
-import java.net.Socket;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -19,19 +16,26 @@ import com.google.gson.reflect.TypeToken;
 import edu.uiuc.boltdb.groupmembership.beans.MembershipBean;
 import edu.uiuc.boltdb.groupmembership.beans.UDPBean;
 
+/**
+ * This class is responsible for unmarshalling gossip messages received from other nodes and
+ * merging it with its membership list.  
+ * @author ashwin
+ *
+ */
+
 public class MergeThread implements Runnable 
 {
 	private static org.apache.log4j.Logger log = Logger.getRootLogger();
 	Map<String,UDPBean> incomingMembershipList = null;
 	String receivedJson = new String();
 	String sentHost;
+	
 	public  MergeThread(String sentHost, String json) 
 	{
 		this.sentHost = sentHost;
 		this.receivedJson = json;
 	}
 	
-	//@Override
 	public void run() 
 	{
 		try 
@@ -47,6 +51,10 @@ public class MergeThread implements Runnable
 		//System.out.println("\nAFTER MERGE : "+GroupMembership.membershipList);
 	}
 
+	/**
+	 * Unmarshall gossip message and converts it into a map datastructure called 'incomingMembershipList'.  
+	 * @throws IOException
+	 */
 	private void getGossipFromClient() throws IOException 
 	{
 		Gson gson = new GsonBuilder().create();
@@ -54,23 +62,33 @@ public class MergeThread implements Runnable
 		incomingMembershipList = gson.fromJson(receivedJson, typeOfMap);
 	}
 	
+	/**
+	 * Merge the incoming membership list into the current node's membership list
+	 */
 	private void mergeIncomingMembershipList() 
 	{
 		Iterator<Map.Entry<String, UDPBean>> iterator = incomingMembershipList.entrySet().iterator();
+		//Iterate over each entry of incoming membershiplist
 		while (iterator.hasNext()) 
 		{
 			Map.Entry<String, UDPBean> entry = iterator.next();
 			String receivedPid = entry.getKey();
 			UDPBean receivedMBean = entry.getValue();
 			
-			//if(receivedMBean.toBeDeleted) continue;
+			//Check if pid present in this entry is also present in our membership list.
 			if(GroupMembership.membershipList.containsKey(receivedPid)) 
 			{
 				MembershipBean currentMBean = GroupMembership.membershipList.get(receivedPid);
+				
+				//If this entry represents the current node and the heartbeat is less than zero(which means this node has voluntary left),
+				//then don't do anything
 				if(currentMBean.hearbeatLastReceived <= 0 && receivedPid.equals(GroupMembership.pid)) continue;
 				
+				//AVOID PING PONG: If the node is marked toBeDeleted then dont do anything. This would avoid ping pong effect. 
 				if (currentMBean.toBeDeleted && !receivedPid.startsWith(sentHost)) continue;
 				
+				//VOLUNTARILY LEAVE : If the incoming entry has heartbeat less than zero,then log 'VOLUNTARILY LEFT' message.
+				//Also update current node's membership list
 				if(receivedMBean.hearbeatLastReceived <= 0 && currentMBean.hearbeatLastReceived > 0) {
 					System.out.println("VOLUNTARILY LEFT : " + receivedPid+ " at "+(new Date()).toString());
 					log.info("VOLUNTARILY LEFT - - - " + receivedPid);
@@ -81,9 +99,9 @@ public class MergeThread implements Runnable
 					continue;
 				} else if (receivedMBean.hearbeatLastReceived <= 0 || currentMBean.hearbeatLastReceived <= 0) continue;
 				
+				//If the incoming entry's heartbeat is greater than current node's membership list,then update the list.
 				if(receivedMBean.hearbeatLastReceived > currentMBean.hearbeatLastReceived) 
 				{
-					//System.out.println("UPDATED HEARTBEAT");
 					currentMBean.hearbeatLastReceived = receivedMBean.hearbeatLastReceived;
 					currentMBean.timeStamp = System.currentTimeMillis();
 					if(currentMBean.toBeDeleted) {
@@ -91,11 +109,11 @@ public class MergeThread implements Runnable
 						currentMBean.toBeDeleted = false;
 					}
 					GroupMembership.membershipList.put(receivedPid, currentMBean);
-					//System.out.println("CURRENTMBEAN : " + currentMBean);
 				}
 			} 
 			else 
 			{
+				//JOIN : If the incoming entry is not in our membership list then it means a new node has joined.
 				if(receivedMBean.hearbeatLastReceived <= 0) continue;
 				String receivedHost = receivedPid.split(GroupMembership.pidDelimiter)[0];
 				MembershipBean mBean = new MembershipBean(receivedHost, receivedMBean.hearbeatLastReceived, System.currentTimeMillis(), false);
@@ -103,7 +121,6 @@ public class MergeThread implements Runnable
 				if (returnVal == null) 
 				{
 					System.out.println("JOINED : " + receivedPid+" at "+(new Date()).toString());
-					//System.out.println("^^Rcved heartb:"+receivedMBean.hearbeatLastReceived);
 					log.info("JOINED - - - " + receivedPid);
 				}
 			}

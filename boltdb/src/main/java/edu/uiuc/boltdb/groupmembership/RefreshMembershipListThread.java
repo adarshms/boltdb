@@ -8,17 +8,24 @@ import org.apache.log4j.Logger;
 
 import edu.uiuc.boltdb.groupmembership.beans.MembershipBean;
 
+/**
+ * This class is responsible for checking every 'groupmembership.refreshMembershipList.freq' seconds
+ * if any entry in the membership list has timed out. The timeout value ,also called 'tFail' is picked 
+ * up from the property file. An entry is marked toBeDeleted if its timed-out after tFail and then
+ * removed from the map after another tFail seconds. 
+ * @author ashwin
+ *
+ */
 public class RefreshMembershipListThread implements Runnable 
 {
 	private static org.apache.log4j.Logger log = Logger.getRootLogger();
-	// TODO take tFail from property file
+
 	public RefreshMembershipListThread(int tFail) 
 	{
 		this.tFail = tFail;
 	}
 	private int tFail;
 
-	//@Override
 	public void run() 
 	{
 		Iterator<Map.Entry<String, MembershipBean>> iterator = GroupMembership.membershipList
@@ -30,13 +37,8 @@ public class RefreshMembershipListThread implements Runnable
 			
 			if(membershipBean.hearbeatLastReceived <= 0 && entry.getKey().equals(GroupMembership.pid)) {
 				continue;
-			} /*else if (membershipBean.hearbeatLastReceived == -1) {
-				membershipBean.hearbeatLastReceived++;
-				continue;
-			} else if (membershipBean.hearbeatLastReceived == 0) {
-				GroupMembership.membershipList.remove(entry.getKey());
-				continue;
-			}*/
+			} 
+			
 			if (membershipBean.toBeDeleted) 
 			{
 				GroupMembership.membershipList.remove(entry.getKey());
