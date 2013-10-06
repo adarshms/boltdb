@@ -44,6 +44,7 @@ public class SendMembershipListThread extends Thread
 			String json = gson.toJson(listToSend, typeOfHashMap);
 			//System.out.println("\nSENDING : "+json);
 			byte[] jsonBytes = json.getBytes();
+			//System.out.println("Sent bytes: "+jsonBytes.length);
 			DatagramPacket dataPacket = new DatagramPacket(jsonBytes, jsonBytes.length, InetAddress.getByName(hostname), port);
 			clientSocket.send(dataPacket);
 			clientSocket.close();

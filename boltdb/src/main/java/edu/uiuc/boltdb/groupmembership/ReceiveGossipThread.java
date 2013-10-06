@@ -22,6 +22,7 @@ public class ReceiveGossipThread implements Runnable
 			byte[] receiveData = new byte[2048];
 		
 			DatagramPacket receive = new DatagramPacket(receiveData, receiveData.length);
+			//receive.getLength()
 			try 
 			{
 				serverSocket.receive(receive);
@@ -30,6 +31,8 @@ public class ReceiveGossipThread implements Runnable
 			{
 				e.printStackTrace();
 			}
+			GroupMembership.bandwidth += receive.getLength() + 8;
+			System.out.println("Packet received:"+(receive.getLength() + 8));
 			String receivedJson = new String(receive.getData());
 			String sentHost = receive.getAddress().getHostName();
 			//System.out.println(receivedJson.trim());

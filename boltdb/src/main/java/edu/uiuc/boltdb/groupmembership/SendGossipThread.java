@@ -28,7 +28,7 @@ public class SendGossipThread implements Runnable
 		{
 			int listSize = GroupMembership.membershipList.size();
 			int activeMembersListSize = getActiveMembersCount();
-			int gossipGroupSize = (int) Math.ceil(Math.sqrt(activeMembersListSize));
+			int gossipGroupSize = (int) Math.ceil((Math.sqrt(activeMembersListSize)));
 			//System.out.println("Active group size:"+activeMembersListSize + 1);
 			Random generator = new Random();
 			Object[] keys = GroupMembership.membershipList.keySet().toArray(); 
