@@ -128,7 +128,7 @@ public class GroupMembership
 		scheduler.scheduleAtFixedRate(new HeartbeatIncrementerThread(), 0, Integer.parseInt(prop.getProperty("groupmembership.heartbeat.freq")), TimeUnit.MILLISECONDS);
 		scheduler.scheduleAtFixedRate(new RefreshMembershipListThread(tFail), 0, Integer.parseInt(prop.getProperty("groupmembership.refreshMembershipList.freq")), TimeUnit.MILLISECONDS);
 		scheduler.scheduleAtFixedRate(new SendGossipThread(Integer.parseInt(prop.getProperty("groupmembership.lossrate"))), 0, Integer.parseInt(prop.getProperty("groupmembership.gossip.freq")), TimeUnit.MILLISECONDS);
-		scheduler.scheduleAtFixedRate(new LogBandwidthThread(), 0, 60000, TimeUnit.MILLISECONDS);
+		//scheduler.scheduleAtFixedRate(new LogBandwidthThread(), 0, 60000, TimeUnit.MILLISECONDS);
 
 		//VOLUTARY LEAVE : This is the code for voluntary leave part. Basically we wait for user to input the string "leave".
 		//Once the user enters "leave",all the threads are stopped. The heartbeat of the current node is set to -1 and 

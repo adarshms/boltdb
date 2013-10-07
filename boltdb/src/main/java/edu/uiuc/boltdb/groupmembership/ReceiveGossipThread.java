@@ -6,7 +6,6 @@ import java.net.DatagramSocket;
 
 /**
  * This thread listens for gossip messages. On receiving a message,it spawns a MergeThread to handle it. 
- * @author ashwin
  *
  */
 public class ReceiveGossipThread implements Runnable 

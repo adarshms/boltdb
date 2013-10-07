@@ -11,6 +11,7 @@ import edu.uiuc.boltdb.groupmembership.beans.MembershipBean;
 /**
  * This class is responsible for checking every 'groupmembership.refreshMembershipList.freq' seconds
  * if any entry in the membership list has timed out. The timeout value ,also called 'tFail' is picked 
+<<<<<<< HEAD
  * up from the property file. An entry is marked toBeDeleted if its timed-out after tFail secs and then
  * removed from the membership list after another tFail seconds. 
  * @author ashwin

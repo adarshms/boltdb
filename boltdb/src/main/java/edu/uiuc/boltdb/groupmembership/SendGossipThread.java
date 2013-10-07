@@ -11,10 +11,14 @@ import edu.uiuc.boltdb.groupmembership.beans.MembershipBean;
 
 
 /**
- * This class is responsible for choosing one or more nodes in random and sending its membership list.
- * @author adarshms
  *
+ * This thread runs every "groupmembership.gossip.freq" seconds. It gets all the active entries(n) in the
+ * MembershipList(excluding itself) and randomly selects sqrt(n) machines from the list and sends gossip messages
+ * to these machines by spawning the SendMembershipListThread for each machine. This thread also simulates 
+ * message losses for experimental purposes
+ * @author adarshms
  */
+
 public class SendGossipThread implements Runnable
 {
 	int lossRate;
@@ -33,6 +37,8 @@ public class SendGossipThread implements Runnable
 			int gossipGroupSize = (int) Math.ceil((Math.sqrt(activeMembersListSize)));
 			Random generator = new Random();
 			Object[] keys = GroupMembership.membershipList.keySet().toArray(); 
+			
+			// Try for a maximum of 100 times
 			int maxTries = 100;
 			while(gossipGroupSize > 0 && (maxTries-- > 0))
 			{
@@ -50,7 +56,8 @@ public class SendGossipThread implements Runnable
 			System.out.println("EXCEPTION:In HeartbeatIncrementerThread");
 		}
 	}
-	
+
+	// Method to get the active members in the MembershipList (excluding the local entry)
 	public int getActiveMembersCount()
 	{
 		int activeMembersCount = 0;
@@ -59,8 +66,10 @@ public class SendGossipThread implements Runnable
 			Collection<MembershipBean> mbeans = GroupMembership.membershipList.values();
 			for(MembershipBean mBean : mbeans)
 			{
+				// Do not count if the entry is marked "toBeDeleted"
 				if(mBean.toBeDeleted)
 					continue;
+				// Do not count if the entry is the local machine's entry
 				if((mBean.hostname).equals(InetAddress.getLocalHost().getHostName()))
 					continue;
 				activeMembersCount++;
@@ -75,6 +84,8 @@ public class SendGossipThread implements Runnable
 		return activeMembersCount;
 	}
 	
+	
+	// This method spawns a SendMembershipListThread to send a gossip message to each of the selected machines
 	public void sendMembershipList(String hostname)
 	{
 		try
