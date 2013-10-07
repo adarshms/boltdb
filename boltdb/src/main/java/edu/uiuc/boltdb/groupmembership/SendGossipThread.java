@@ -10,7 +10,11 @@ import org.apache.log4j.Logger;
 import edu.uiuc.boltdb.groupmembership.beans.MembershipBean;
 
 
-
+/**
+ * This class is responsible for choosing one or more nodes in random and sending its membership list.
+ * @author adarshms
+ *
+ */
 public class SendGossipThread implements Runnable
 {
 	int lossRate;
@@ -20,16 +24,13 @@ public class SendGossipThread implements Runnable
 		this.lossRate = lossRate;
 	}
 
-	//@Override
 	public void run()
 	{
-		//System.out.println("GOSSIP THREAD STARTED AT:"+new Date().toString());
 		try
 		{
 			int listSize = GroupMembership.membershipList.size();
 			int activeMembersListSize = getActiveMembersCount();
 			int gossipGroupSize = (int) Math.ceil((Math.sqrt(activeMembersListSize)));
-			//System.out.println("Active group size:"+activeMembersListSize + 1);
 			Random generator = new Random();
 			Object[] keys = GroupMembership.membershipList.keySet().toArray(); 
 			int maxTries = 100;
@@ -40,11 +41,9 @@ public class SendGossipThread implements Runnable
 					continue;
 				if((mBean.hostname).equals(InetAddress.getLocalHost().getHostName()))
 					continue;
-				//System.out.println("GOSSIP TO:"+mBean.hostname);
 				sendMembershipList(mBean.hostname);
 				gossipGroupSize--;
 			}
-			//System.out.println("DONE GOSSIPPING with tries:"+maxTries);
 		}
 		catch(Exception e)
 		{
