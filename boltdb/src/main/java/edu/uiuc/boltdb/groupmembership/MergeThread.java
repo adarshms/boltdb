@@ -19,7 +19,6 @@ import edu.uiuc.boltdb.groupmembership.beans.UDPBean;
 /**
  * This class is responsible for unmarshalling gossip messages received from other nodes and
  * merging it with its membership list.  
- * @author ashwin
  *
  */
 

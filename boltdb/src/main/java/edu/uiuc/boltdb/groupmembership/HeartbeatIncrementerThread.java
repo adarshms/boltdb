@@ -6,7 +6,6 @@ import edu.uiuc.boltdb.groupmembership.beans.MembershipBean;
 
 /**
  * This class increments the hearbeat of the current node.
- * @author ashwin
  *
  */
 public class HeartbeatIncrementerThread implements Runnable 

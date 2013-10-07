@@ -1,5 +1,9 @@
 package edu.uiuc.boltdb.groupmembership.beans;
 
+/**
+ * This bean encapsulates the hostname, timeStamp and the toBeDeleted flag of for each machine. The instance of 
+ * this class goes in as the value in the MembershipList
+ */
 public class MembershipBean extends UDPBean {
 	public String hostname;
 	public long timeStamp;

@@ -13,7 +13,6 @@ import edu.uiuc.boltdb.groupmembership.beans.MembershipBean;
  * if any entry in the membership list has timed out. The timeout value ,also called 'tFail' is picked 
  * up from the property file. An entry is marked toBeDeleted if its timed-out after tFail and then
  * removed from the map after another tFail seconds. 
- * @author ashwin
  *
  */
 public class RefreshMembershipListThread implements Runnable 
