@@ -35,24 +35,25 @@ public class RefreshMembershipListThread implements Runnable
 		{
 			Map.Entry<String, MembershipBean> entry = iterator.next();
 			MembershipBean membershipBean = entry.getValue();
+			if(membershipBean.hearbeatLastReceived <= 0) {
+				//If current node's heartbeat is less than zero ie has Voluntarily left,then don't do anything
+				if(membershipBean.hearbeatLastReceived <= 0 && entry.getKey().equals(GroupMembership.pid)) {
+					continue;
+				} 
 			
-			//If current node's heartbeat is less than zero ie has Voluntarily left,then don't do anything
-			if(membershipBean.hearbeatLastReceived <= 0 && entry.getKey().equals(GroupMembership.pid)) {
-				continue;
-			} 
-			
-			//Remove entry which is marked toBeDeleted
-			if (membershipBean.toBeDeleted) 
-			{
-				GroupMembership.membershipList.remove(entry.getKey());
-			} 
-			//If the membership list entry has timed-out then mark it toBeDeleted
-			else if (System.currentTimeMillis() - membershipBean.timeStamp >= tFail * 1000) 
-			{
-				membershipBean.toBeDeleted = true;
-				if (membershipBean.hearbeatLastReceived > 0) {
-					System.out.println("CRASHED : " + entry.getKey() +" at " + new Date().toString());
-					log.info("CRASHED - - - " + entry.getKey());
+				//Remove entry which is marked toBeDeleted
+				if (membershipBean.toBeDeleted) 
+				{
+					GroupMembership.membershipList.remove(entry.getKey());
+				} 
+				//If the membership list entry has timed-out then mark it toBeDeleted
+				else if (System.currentTimeMillis() - membershipBean.timeStamp >= tFail * 1000) 
+				{
+					membershipBean.toBeDeleted = true;
+					/*if (membershipBean.hearbeatLastReceived > 0) {
+						System.out.println("CRASHED : " + entry.getKey() +" at " + new Date().toString());
+						log.info("CRASHED - - - " + entry.getKey());
+					}*/
 				}
 			}
 		}

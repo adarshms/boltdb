@@ -75,7 +75,7 @@ public class MergeThread implements Runnable
 			UDPBean receivedMBean = entry.getValue();
 			
 			//Check if pid present in this entry is also present in our membership list.
-			if(GroupMembership.membershipList.containsKey(receivedPid)) 
+			if(GroupMembership.membershipList.containsKey(receivedPid) && receivedMBean.hearbeatLastReceived < 0) 
 			{
 				MembershipBean currentMBean = GroupMembership.membershipList.get(receivedPid);
 				
@@ -99,7 +99,7 @@ public class MergeThread implements Runnable
 				} else if (receivedMBean.hearbeatLastReceived <= 0 || currentMBean.hearbeatLastReceived <= 0) continue;
 				
 				//If the incoming entry's heartbeat is greater than current node's membership list,then update the list.
-				if(receivedMBean.hearbeatLastReceived > currentMBean.hearbeatLastReceived) 
+				/*if(receivedMBean.hearbeatLastReceived > currentMBean.hearbeatLastReceived) 
 				{
 					currentMBean.hearbeatLastReceived = receivedMBean.hearbeatLastReceived;
 					currentMBean.timeStamp = System.currentTimeMillis();
@@ -108,9 +108,9 @@ public class MergeThread implements Runnable
 						currentMBean.toBeDeleted = false;
 					}
 					GroupMembership.membershipList.put(receivedPid, currentMBean);
-				}
+				}*/
 			} 
-			else 
+			else if(!GroupMembership.membershipList.containsKey(receivedPid) && receivedMBean.hearbeatLastReceived > 0) 
 			{
 				//JOIN : If the incoming entry is not in our membership list then it means a new node has joined.
 				if(receivedMBean.hearbeatLastReceived <= 0) continue;
