@@ -1,0 +1,7 @@
+machines.address=192.17.11.8:6789,192.17.11.7:6789,192.17.11.18:6789,192.17.11.19:6789
+groupmembership.lossrate=0
+groupmembership.contact=siebl-0218-07.ews.illinois.edu
+groupmembership.tfail=3
+groupmembership.heartbeat.freq=600
+groupmembership.refreshMembershipList.freq=1000
+groupmembership.gossip.freq=1000
