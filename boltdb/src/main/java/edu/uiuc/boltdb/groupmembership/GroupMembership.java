@@ -94,7 +94,9 @@ public class GroupMembership implements Runnable {
 				pid += "-" + args[3];
 				initializeLogger(args[3]);
 			}
-
+			
+			long hashValue = computeHash(pid);
+			
 			// Insert the current machine into the membership list with
 			// heartbeat=1. This single entry is going to be sent to the contact
 			// node for joining the cluster.
@@ -102,7 +104,7 @@ public class GroupMembership implements Runnable {
 					GroupMembership.pid,
 					new MembershipBean(
 							InetAddress.getLocalHost().getHostName(), 1, System
-									.currentTimeMillis(), false));
+									.currentTimeMillis(), hashValue, false));
 
 			// Load all the parameters needed from the property file.
 			Properties prop = new Properties();
@@ -196,5 +198,13 @@ public class GroupMembership implements Runnable {
 			System.out.println("Exception occured");
 		}
 
+	}
+	
+	private long computeHash(String pid) {
+		long hashValue = 13;
+		for (int i=0; i < pid.length(); i++) {
+		    hashValue = hashValue*31 + pid.charAt(i);
+		}
+		return hashValue % 1000001L;
 	}
 }

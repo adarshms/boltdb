@@ -115,7 +115,7 @@ public class MergeThread implements Runnable
 				//JOIN : If the incoming entry is not in our membership list then it means a new node has joined.
 				if(receivedMBean.hearbeatLastReceived <= 0) continue;
 				String receivedHost = receivedPid.split(GroupMembership.pidDelimiter)[0];
-				MembershipBean mBean = new MembershipBean(receivedHost, receivedMBean.hearbeatLastReceived, System.currentTimeMillis(), false);
+				MembershipBean mBean = new MembershipBean(receivedHost, receivedMBean.hearbeatLastReceived, System.currentTimeMillis(), receivedMBean.hashValue, false);
 				MembershipBean returnVal = GroupMembership.membershipList.putIfAbsent(receivedPid, mBean);
 				if (returnVal == null) 
 				{
