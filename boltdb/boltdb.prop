@@ -5,3 +5,4 @@ groupmembership.tfail=3
 groupmembership.heartbeat.freq=600
 groupmembership.refreshMembershipList.freq=1000
 groupmembership.gossip.freq=1000
+boltdb.server=172.16.149.48
