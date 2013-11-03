@@ -20,7 +20,8 @@ public class BoltDBClient {
 		if(System.getSecurityManager() == null) {
 			System.setSecurityManager(new SecurityManager());
 		}
-		boltDBServer = (BoltDBProtocol) Naming.lookup("rmi://" + rmiString + "/Hello");
+
+		boltDBServer = (BoltDBProtocol) Naming.lookup("rmi://" + rmiString + "/KVStore");
 		System.out.println("HERE");
 	}
 	
