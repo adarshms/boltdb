@@ -20,7 +20,7 @@ public class MembershipBean extends UDPBean {
 	
 	@Override
 	public String toString() {
-		return new String("[" + hostname + " " +hearbeatLastReceived+" "+timeStamp+" "+toBeDeleted+"]");
+		return new String("[" + hostname + " " +hearbeatLastReceived+" "+timeStamp+" "+toBeDeleted+ " " + hashValue + "]");
 	}
 	
 }

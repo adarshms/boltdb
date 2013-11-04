@@ -89,7 +89,7 @@ public class MergeThread implements Runnable
 				//VOLUNTARILY LEAVE : If the incoming entry has heartbeat less than zero,then log 'VOLUNTARILY LEFT' message.
 				//Also update current node's membership list
 				if(receivedMBean.hearbeatLastReceived <= 0 && currentMBean.hearbeatLastReceived > 0) {
-					System.out.println("VOLUNTARILY LEFT : " + receivedPid+ " at "+(new Date()).toString());
+					//System.out.println("VOLUNTARILY LEFT : " + receivedPid+ " at "+(new Date()).toString());
 					log.info("VOLUNTARILY LEFT - - - " + receivedPid);
 					currentMBean.hearbeatLastReceived = -1;
 					currentMBean.timeStamp = System.currentTimeMillis();
@@ -119,7 +119,7 @@ public class MergeThread implements Runnable
 				MembershipBean returnVal = GroupMembership.membershipList.putIfAbsent(receivedPid, mBean);
 				if (returnVal == null) 
 				{
-					System.out.println("JOINED : " + receivedPid+" at "+(new Date()).toString());
+					//System.out.println("JOINED : " + receivedPid+" at "+(new Date()).toString());
 					log.info("JOINED - - - " + receivedPid);
 				}
 			}

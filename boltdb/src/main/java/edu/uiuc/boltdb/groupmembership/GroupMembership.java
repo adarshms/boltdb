@@ -4,7 +4,10 @@ import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.math.BigInteger;
 import java.net.InetAddress;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.Map;
@@ -220,19 +223,16 @@ public class GroupMembership implements Runnable {
 					System.out.println();
 				}
 			}
-			System.out.println("exiting");
 		} catch (Exception e) {
-			System.out.println("Exception occured");
+			e.printStackTrace();
 		}
 
 	}
 	
-	private long computeHash(String pid) {
-		long hashValue = 13;
-		for (int i=0; i < pid.length(); i++) {
-		    hashValue = hashValue*31 + pid.charAt(i);
-		}
-		return hashValue % 1000001L;
+	public static long computeHash(String pid) throws NoSuchAlgorithmException {
+		MessageDigest md = MessageDigest.getInstance("MD5");
+		BigInteger bigInt = new BigInteger(1, md.digest(pid.getBytes()));
+		return Math.abs(bigInt.longValue()) % 1000001L;
 	}
 	
 	public static String getSuccessorNodeOf(long keyHash) {

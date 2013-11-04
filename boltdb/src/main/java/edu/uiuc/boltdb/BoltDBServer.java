@@ -11,6 +11,7 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
+import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -43,7 +44,13 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 	}
 	
 	public void insert(long key, String value, boolean canBeForwarded) throws RemoteException {
-		String targetHost = GroupMembership.getSuccessorNodeOf(computeHash((new Long(key).toString())));
+		String targetHost = null;
+		try {
+			targetHost = GroupMembership.getSuccessorNodeOf(GroupMembership.computeHash((new Long(key).toString())));
+		} catch (NoSuchAlgorithmException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
 		try {
 			if(targetHost.equals(InetAddress.getLocalHost().getHostName())) {
 				KVStore.put(key, value);
@@ -68,7 +75,13 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 			return KVStore.get(key);
 		} else if(canBeForwarded){
 			try {
-				String targetHost = GroupMembership.getSuccessorNodeOf(computeHash((new Long(key).toString())));
+				String targetHost = null;
+				try {
+					targetHost = GroupMembership.getSuccessorNodeOf(GroupMembership.computeHash((new Long(key).toString())));
+				} catch (NoSuchAlgorithmException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 				BoltDBProtocol targetServer = (BoltDBProtocol) Naming.lookup("rmi://" + targetHost + "/KVStore");
 				return targetServer.lookup(key, false);
 			} catch (MalformedURLException e) {
@@ -82,7 +95,13 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 	}
 
 	public void update(long key, String value, boolean canBeForwarded) throws RemoteException {
-		String targetHost = GroupMembership.getSuccessorNodeOf(computeHash((new Long(key).toString())));
+		String targetHost = null;
+		try {
+			targetHost = GroupMembership.getSuccessorNodeOf(GroupMembership.computeHash((new Long(key).toString())));
+		} catch (NoSuchAlgorithmException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
 		try {
 			if(targetHost.equals(InetAddress.getLocalHost().getHostName())) {
 				KVStore.put(key, value);
@@ -108,7 +127,13 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 			return;
 		} else if(canBeForwarded){
 			try {
-				String targetHost = GroupMembership.getSuccessorNodeOf(computeHash((new Long(key).toString())));
+				String targetHost = null;
+				try {
+					targetHost = GroupMembership.getSuccessorNodeOf(GroupMembership.computeHash((new Long(key).toString())));
+				} catch (NoSuchAlgorithmException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 				BoltDBProtocol targetServer = (BoltDBProtocol) Naming.lookup("rmi://" + targetHost + "/KVStore");
 				targetServer.delete(key, false);
 				return;
@@ -124,30 +149,5 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 
 	private boolean checkLocalStore(long key) {
 		return KVStore.containsKey(key);
-	}
-	
-/*	private String getTargetHost(long key) {
-		long keyHash = computeHash((new Long(key).toString()));
-		String firstHost = null;
-		boolean gotFirstHost = false;
-		for (Map.Entry<String, MembershipBean> entry : GroupMembership.membershipList.entrySet())
-		{
-			if(!gotFirstHost) {
-				firstHost = entry.getValue().hostname;
-				gotFirstHost = true;
-			}
-		    if(keyHash <= entry.getValue().hashValue) {
-		    	return entry.getValue().hostname;
-		    }
-		}
-		return firstHost;
-	}*/
-	
-	private long computeHash(String pid) {
-		long hashValue = 13;
-		for (int i=0; i < pid.length(); i++) {
-		    hashValue = hashValue*31 + pid.charAt(i);
-		}
-		return hashValue % 1000001L;
 	}
 }
