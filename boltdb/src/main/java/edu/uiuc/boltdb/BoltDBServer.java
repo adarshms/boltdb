@@ -8,8 +8,8 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.TreeMap;
 
 import edu.uiuc.boltdb.groupmembership.GroupMembership;
 import edu.uiuc.boltdb.groupmembership.beans.MembershipBean;
@@ -28,7 +28,7 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 	/**
 	 * @param args
 	 */
-	private static Map<Long,String> KVStore = new TreeMap<Long,String>();
+	public static Map<Long,String> KVStore = new HashMap<Long,String>();
 	
 	public static void main(String[] args) throws RemoteException, MalformedURLException {
 		
