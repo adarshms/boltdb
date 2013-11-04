@@ -5,8 +5,10 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
+import java.rmi.Naming;
 import java.util.Date;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
@@ -19,6 +21,8 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
 
+import edu.uiuc.boltdb.BoltDBProtocol;
+import edu.uiuc.boltdb.BoltDBServer;
 import edu.uiuc.boltdb.groupmembership.beans.*;
 
 /**
@@ -178,21 +182,57 @@ public class GroupMembership implements Runnable {
 			BufferedReader bufferRead = new BufferedReader(
 					new InputStreamReader(System.in));
 			while (true) {
-				String s = bufferRead.readLine();
-				if (s.equals("leave")) {
+				// Read user's input
+				System.out.print("boltdb>");
+				String commandString = bufferRead.readLine();
+				if (commandString.equals(""))
+					continue;
+				if (commandString.equals("leave")) {
 					receiveGossip.stop();
 					scheduler.shutdownNow();
 					scheduler.awaitTermination(100, TimeUnit.MILLISECONDS);
+					//Move your keys to successor
+					long myHash = GroupMembership.membershipList.get(GroupMembership.pid).hashValue;
+					String successor = getSuccessorNodeOf(myHash);
+					
+					BoltDBProtocol successorRMIServer = (BoltDBProtocol) Naming.lookup("rmi://" + successor + "/KVStore");
+					Iterator<Entry<Long,String>> itr = BoltDBServer.KVStore.entrySet().iterator();
+					
+					while(itr.hasNext()) {
+						Entry<Long,String> entry = itr.next();
+						successorRMIServer.insert(entry.getKey(), entry.getValue(), false);
+					}
+					BoltDBServer.KVStore.clear();
+					
 					MembershipBean mBean = membershipList.get(pid);
 					mBean.hearbeatLastReceived = -1;
 					mBean.timeStamp = System.currentTimeMillis();
 					membershipList.put(pid, mBean);
-					System.out.println("just before gossip thread");
 					Thread gossipOneLastTime = new Thread(new SendGossipThread(
 							0));
 					gossipOneLastTime.start();
 					System.out.println("going to break");
 					break;
+				}
+				else if(commandString.equals("show")) {
+					System.out.println("-------------------------------------------------");
+					System.out.println("Membership List : ");
+					System.out.println("-------------------------------------------------");
+					for (Map.Entry<String, MembershipBean> entry : membershipList.entrySet())
+					{
+						System.out.println(entry);
+					}
+					System.out.println("-------------------------------------------------");
+					System.out.println();
+					System.out.println("-------------------------------------------------");
+					System.out.println("Key Value Store : ");
+					System.out.println("-------------------------------------------------");
+					for (Map.Entry<Long, String> entry : BoltDBServer.KVStore.entrySet())
+					{
+					    System.out.println(entry.getKey() + " ---> " + entry.getValue() + "   |   Hash Value of Key - " + computeHash((new Long(entry.getKey())).toString()));
+					}
+					System.out.println("-------------------------------------------------");
+					System.out.println();
 				}
 			}
 			System.out.println("exiting");

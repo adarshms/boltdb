@@ -20,9 +20,7 @@ public class BoltDBClient {
 		if(System.getSecurityManager() == null) {
 			System.setSecurityManager(new SecurityManager());
 		}
-
 		boltDBServer = (BoltDBProtocol) Naming.lookup("rmi://" + rmiString + "/KVStore");
-		System.out.println("HERE");
 	}
 	
 	/**
@@ -87,7 +85,7 @@ public class BoltDBClient {
 				return;
 			}
 			// Perform Insert Operation
-			boltDBServer.insert(key, value);
+			boltDBServer.insert(key, value, true);
 		} else if(commandType.equals("update")) {
 			String keyStr = stk.nextToken();
 			long key = parseKey(keyStr);
@@ -101,27 +99,27 @@ public class BoltDBClient {
 				return;
 			}
 			// Perform Update Operation
-			boltDBServer.update(key, value);
+			boltDBServer.update(key, value, true);
 		} else if(commandType.equals("lookup")) {
 			String keyStr = stk.nextToken();
 			long key = parseKey(keyStr);
 			if(key == -1) return;
 			// Perform Look Up Operation
-			String value = (String)boltDBServer.lookup(key);
+			String value = (String)boltDBServer.lookup(key, true);
 			System.out.println("Look Up Result : " + value);
 		} else if(commandType.equals("delete")) {
 			String keyStr = stk.nextToken();
 			long key = parseKey(keyStr);
 			if(key == -1) return;
 			// Perform Delete Operation
-			boltDBServer.delete(key);
+			boltDBServer.delete(key, true);
 			System.out.println("Key Value Pair Deleted");
 		} else {
 			printUsage(0);
 			return;
 		}
 	}
-	
+
 	private long parseKey(String keyStr) {
 		long key;
 		try {

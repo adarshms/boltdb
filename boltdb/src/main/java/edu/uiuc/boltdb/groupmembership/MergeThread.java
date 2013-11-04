@@ -162,7 +162,7 @@ public class MergeThread implements Runnable
 		while(itr.hasNext()) {
 			Entry<Long,String> entry = itr.next();
 			if (entry.getKey() > myHash || entry.getKey() <= hashOfNewJoinedNode) {
-				targetRMIServer.insert(entry.getKey(), entry.getValue());
+				targetRMIServer.insert(entry.getKey(), entry.getValue(),false);
 				BoltDBServer.KVStore.remove(entry.getKey());
 			} 
 		}

@@ -42,7 +42,6 @@ public class SendGossipThread implements Runnable
 			int maxTries = 100;
 			while(gossipGroupSize > 0 && (maxTries-- > 0))
 			{
-				System.out.println("in while with gossip groupsize:"+gossipGroupSize);
 				MembershipBean mBean = GroupMembership.membershipList.get(keys[generator.nextInt(listSize)]);
 				if(mBean.toBeDeleted)
 					continue;
