@@ -1,5 +1,8 @@
 package edu.uiuc.boltdb;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.UnknownHostException;
@@ -34,6 +37,44 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 		groupMembershipThread.start();
 		Naming.rebind ("KVStore", new BoltDBServer());
         System.out.println ("Server is ready.");
+        
+	}
+	
+	private void runServerShell() throws IOException {
+		// Simulate a unix shell
+		 String commandString = "";
+		 BufferedReader console = new BufferedReader(new InputStreamReader(System.in));
+		
+		 // Break out with Ctrl+C
+		while (true) {
+		  // Read user's input
+		  System.out.print("boltdb>");
+		  commandString = console.readLine();
+
+		  // If the user entered a return, just loop again
+		  if (commandString.equals(""))
+			continue;
+		  else if (commandString.equals("show")) {
+			  System.out.println("-------------------------------------------------");
+			  System.out.println("Membership List : ");
+			  System.out.println("-------------------------------------------------");
+			  for (Map.Entry<String, MembershipBean> entry : GroupMembership.membershipList.entrySet())
+			  {
+				    System.out.println(entry);
+			  }
+			  System.out.println("-------------------------------------------------");
+			  System.out.println();
+			  System.out.println("-------------------------------------------------");
+			  System.out.println("Key Value Store : ");
+			  System.out.println("-------------------------------------------------");
+			  for (Map.Entry<Long, String> entry : KVStore.entrySet())
+			  {
+				    System.out.println(entry.getKey() + " ---> " + entry.getValue());
+			  }
+			  System.out.println("-------------------------------------------------");
+			  System.out.println();
+		  }
+		}
 	}
 
 	public void insert(long key, String value) throws RemoteException {
