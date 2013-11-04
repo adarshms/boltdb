@@ -14,24 +14,21 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
   <build>
-  <pluginManagement>
-      <plugins>
-        <plugin>
-          <groupId>org.codehaus.mojo</groupId>
-          <artifactId>rmic-maven-plugin</artifactId>
-          <version>1.2.1</version>
-          <executions>
+    <plugins>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>rmic-maven-plugin</artifactId>
+        <version>1.2.1</version>
+        <executions>
           <execution>
-            <id>rmi compilation</id>
+            <id>rmic-process-classes</id>
             <goals>
               <goal>rmic</goal>
             </goals>
           </execution>
         </executions>
-        </plugin>
-      </plugins>
-    </pluginManagement>
-
+      </plugin>
+    </plugins>
     </build>
     
   <dependencies>
