@@ -8,6 +8,7 @@ import java.math.BigInteger;
 import java.net.InetAddress;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.rmi.Naming;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.Map;
@@ -23,6 +24,7 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
 
+import edu.uiuc.boltdb.BoltDBProtocol;
 import edu.uiuc.boltdb.BoltDBServer;
 import edu.uiuc.boltdb.groupmembership.beans.*;
 
@@ -192,6 +194,19 @@ public class GroupMembership implements Runnable {
 					receiveGossip.stop();
 					scheduler.shutdownNow();
 					scheduler.awaitTermination(100, TimeUnit.MILLISECONDS);
+					//Move your keys to successor
+					long myHash = GroupMembership.membershipList.get(GroupMembership.pid).hashValue;
+					String successor = getSuccessorNodeOf(myHash);
+					
+					BoltDBProtocol successorRMIServer = (BoltDBProtocol) Naming.lookup("rmi://" + successor + "/KVStore");
+					Iterator<Entry<Long,String>> itr = BoltDBServer.KVStore.entrySet().iterator();
+					
+					while(itr.hasNext()) {
+						Entry<Long,String> entry = itr.next();
+						successorRMIServer.insert(entry.getKey(), entry.getValue(), false);
+					}
+					BoltDBServer.KVStore.clear();
+					
 					MembershipBean mBean = membershipList.get(pid);
 					mBean.hearbeatLastReceived = -1;
 					mBean.timeStamp = System.currentTimeMillis();

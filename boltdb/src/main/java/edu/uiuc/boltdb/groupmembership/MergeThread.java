@@ -2,10 +2,17 @@ package edu.uiuc.boltdb.groupmembership;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.net.InetAddress;
+import java.net.MalformedURLException;
+import java.net.UnknownHostException;
+import java.rmi.Naming;
+import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import org.apache.log4j.Logger;
 
@@ -13,6 +20,8 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 
+import edu.uiuc.boltdb.BoltDBProtocol;
+import edu.uiuc.boltdb.BoltDBServer;
 import edu.uiuc.boltdb.groupmembership.beans.MembershipBean;
 import edu.uiuc.boltdb.groupmembership.beans.UDPBean;
 
@@ -46,7 +55,12 @@ public class MergeThread implements Runnable
 			System.out.println("Problem receiving gossip");
 			return;
 		}
-		mergeIncomingMembershipList();
+		try {
+			mergeIncomingMembershipList();
+		} catch (Exception e) {
+			e.printStackTrace();
+		} 
+		
 		//System.out.println("\nAFTER MERGE : "+GroupMembership.membershipList);
 	}
 
@@ -63,8 +77,12 @@ public class MergeThread implements Runnable
 	
 	/**
 	 * Merge the incoming membership list into the current node's membership list
+	 * @throws UnknownHostException 
+	 * @throws NotBoundException 
+	 * @throws RemoteException 
+	 * @throws MalformedURLException 
 	 */
-	private void mergeIncomingMembershipList() 
+	private void mergeIncomingMembershipList() throws UnknownHostException, MalformedURLException, RemoteException, NotBoundException 
 	{
 		Iterator<Map.Entry<String, UDPBean>> iterator = incomingMembershipList.entrySet().iterator();
 		//Iterate over each entry of incoming membershiplist
@@ -121,8 +139,32 @@ public class MergeThread implements Runnable
 				{
 					//System.out.println("JOINED : " + receivedPid+" at "+(new Date()).toString());
 					log.info("JOINED - - - " + receivedPid);
+					boolean amISuccessor = amITheSuccesorOf(receivedPid);
+					
+					if(amISuccessor) {
+						moveKeys(receivedHost,mBean.hashValue);
+					}
 				}
 			}
+		}
+	}
+	
+	private boolean amITheSuccesorOf(String receivedPid) throws UnknownHostException {
+		long hashOfNewlyJoinedNode = GroupMembership.membershipList.get(receivedPid).hashValue;
+		if(GroupMembership.getSuccessorNodeOf(hashOfNewlyJoinedNode) == InetAddress.getLocalHost().getHostName()) return true;
+		return false;
+	}
+	
+	private void moveKeys(String targetHost, long hashOfNewJoinedNode) throws MalformedURLException, RemoteException, NotBoundException {
+		BoltDBProtocol targetRMIServer = (BoltDBProtocol) Naming.lookup("rmi://" + targetHost + "/KVStore");
+		Iterator<Entry<Long,String>> itr = BoltDBServer.KVStore.entrySet().iterator();
+		long myHash = GroupMembership.membershipList.get(GroupMembership.pid).hashValue;
+		while(itr.hasNext()) {
+			Entry<Long,String> entry = itr.next();
+			if (entry.getKey() > myHash || entry.getKey() <= hashOfNewJoinedNode) {
+				targetRMIServer.insert(entry.getKey(), entry.getValue(),false);
+				BoltDBServer.KVStore.remove(entry.getKey());
+			} 
 		}
 	}
 }
