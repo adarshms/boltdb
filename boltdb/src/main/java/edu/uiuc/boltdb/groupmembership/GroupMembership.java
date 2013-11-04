@@ -238,16 +238,16 @@ public class GroupMembership implements Runnable {
 	public static String getSuccessorNodeOf(long keyHash) {
 		Iterator<Entry<String,MembershipBean>> itr = GroupMembership.membershipList.entrySet().iterator();
 		long minClockwiseDistance = 1000000L;
-		String successorNode = new String();
+		String successorHost = new String();
 		while(itr.hasNext()) {
 			Entry<String,MembershipBean> entry = itr.next();
 			long hashCurrent = entry.getValue().hashValue;
 			long clockWiseDistance = keyHash > hashCurrent ? 1000000l - (keyHash - hashCurrent) : hashCurrent - keyHash;
 			if(minClockwiseDistance > clockWiseDistance) {
 				minClockwiseDistance = clockWiseDistance;
-				successorNode = entry.getValue().hostname;
+				successorHost = entry.getValue().hostname;
 			}
 		}
-		return successorNode;
+		return successorHost;
 	}
 }
