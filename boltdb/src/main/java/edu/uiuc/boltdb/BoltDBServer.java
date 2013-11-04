@@ -31,64 +31,25 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 	/**
 	 * @param args
 	 */
-	private static Map<Long,String> KVStore = new TreeMap<Long,String>();
+	public static Map<Long,String> KVStore = new TreeMap<Long,String>();
 	
-	public static void main(String[] args) throws RemoteException, MalformedURLException {
+	public static void main(String[] args) throws IOException {
 		
 		Runnable groupMembership = new GroupMembership(args);
 		Thread groupMembershipThread = new Thread(groupMembership);
 		groupMembershipThread.start();
 		LocateRegistry.createRegistry(1099);
 		Naming.rebind ("KVStore", new BoltDBServer());
-        System.out.println ("Server is ready.");
-        
 	}
 	
-	private void runServerShell() throws IOException {
-		// Simulate a unix shell
-		 String commandString = "";
-		 BufferedReader console = new BufferedReader(new InputStreamReader(System.in));
-		
-		 // Break out with Ctrl+C
-		while (true) {
-		  // Read user's input
-		  System.out.print("boltdb>");
-		  commandString = console.readLine();
-
-		  // If the user entered a return, just loop again
-		  if (commandString.equals(""))
-			continue;
-		  else if (commandString.equals("show")) {
-			  System.out.println("-------------------------------------------------");
-			  System.out.println("Membership List : ");
-			  System.out.println("-------------------------------------------------");
-			  for (Map.Entry<String, MembershipBean> entry : GroupMembership.membershipList.entrySet())
-			  {
-				    System.out.println(entry);
-			  }
-			  System.out.println("-------------------------------------------------");
-			  System.out.println();
-			  System.out.println("-------------------------------------------------");
-			  System.out.println("Key Value Store : ");
-			  System.out.println("-------------------------------------------------");
-			  for (Map.Entry<Long, String> entry : KVStore.entrySet())
-			  {
-				    System.out.println(entry.getKey() + " ---> " + entry.getValue());
-			  }
-			  System.out.println("-------------------------------------------------");
-			  System.out.println();
-		  }
-		}
-	}
-
-	public void insert(long key, String value) throws RemoteException {
-		String targetHost = getTargetHost(key);
+	public void insert(long key, String value, boolean canBeForwarded) throws RemoteException {
+		String targetHost = GroupMembership.getSuccessorNodeOf(computeHash((new Long(key).toString())));
 		try {
 			if(targetHost.equals(InetAddress.getLocalHost().getHostName())) {
 				KVStore.put(key, value);
-			} else {
+			} else if(canBeForwarded){
 				BoltDBProtocol targetServer = (BoltDBProtocol) Naming.lookup("rmi://" + targetHost + "/KVStore");
-				targetServer.insert(key, value);
+				targetServer.insert(key, value, false);
 			}
 		} catch (UnknownHostException e) {
 			// TODO Auto-generated catch block
@@ -102,14 +63,14 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 		}
 	}
 
-	public String lookup(long key) throws RemoteException {
+	public String lookup(long key, boolean canBeForwarded) throws RemoteException {
 		if(checkLocalStore(key)) {
 			return KVStore.get(key);
-		} else {
+		} else if(canBeForwarded){
 			try {
-				String targetHost = getTargetHost(key);
+				String targetHost = GroupMembership.getSuccessorNodeOf(computeHash((new Long(key).toString())));
 				BoltDBProtocol targetServer = (BoltDBProtocol) Naming.lookup("rmi://" + targetHost + "/KVStore");
-				return targetServer.lookup(key);
+				return targetServer.lookup(key, false);
 			} catch (MalformedURLException e) {
 					e.printStackTrace();
 			} catch (NotBoundException e) {
@@ -120,14 +81,14 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 
 	}
 
-	public void update(long key, String value) throws RemoteException {
-		String targetHost = getTargetHost(key);
+	public void update(long key, String value, boolean canBeForwarded) throws RemoteException {
+		String targetHost = GroupMembership.getSuccessorNodeOf(computeHash((new Long(key).toString())));
 		try {
 			if(targetHost.equals(InetAddress.getLocalHost().getHostName())) {
 				KVStore.put(key, value);
-			} else {
+			} else if(canBeForwarded) {
 				BoltDBProtocol targetServer = (BoltDBProtocol) Naming.lookup("rmi://" + targetHost + "/KVStore");
-				targetServer.update(key, value);
+				targetServer.update(key, value, false);
 			}
 		} catch (UnknownHostException e) {
 			// TODO Auto-generated catch block
@@ -141,15 +102,15 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 		}
 	}
 
-	public void delete(long key) throws RemoteException {
+	public void delete(long key, boolean canBeForwarded) throws RemoteException {
 		if(checkLocalStore(key)) {
 			KVStore.remove(key);
 			return;
-		} else {
+		} else if(canBeForwarded){
 			try {
-				String targetHost = getTargetHost(key);
+				String targetHost = GroupMembership.getSuccessorNodeOf(computeHash((new Long(key).toString())));
 				BoltDBProtocol targetServer = (BoltDBProtocol) Naming.lookup("rmi://" + targetHost + "/KVStore");
-				targetServer.delete(key);
+				targetServer.delete(key, false);
 				return;
 			} catch (MalformedURLException e) {
 					e.printStackTrace();
@@ -162,25 +123,25 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 	}
 
 	private boolean checkLocalStore(long key) {
-		return KVStore.containsKey(computeHash((new Long(key)).toString()));
+		return KVStore.containsKey(key);
 	}
 	
-	private String getTargetHost(long key) {
+/*	private String getTargetHost(long key) {
 		long keyHash = computeHash((new Long(key).toString()));
-		String targetHost = null;
 		String firstHost = null;
-		
+		boolean gotFirstHost = false;
 		for (Map.Entry<String, MembershipBean> entry : GroupMembership.membershipList.entrySet())
 		{
+			if(!gotFirstHost) {
+				firstHost = entry.getValue().hostname;
+				gotFirstHost = true;
+			}
 		    if(keyHash <= entry.getValue().hashValue) {
-		    	targetHost = entry.getValue().hostname;
-		    	continue;
+		    	return entry.getValue().hostname;
 		    }
-		    else 
-		    	return targetHost;
 		}
 		return firstHost;
-	}
+	}*/
 	
 	private long computeHash(String pid) {
 		long hashValue = 13;
