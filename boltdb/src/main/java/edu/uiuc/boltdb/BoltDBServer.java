@@ -9,6 +9,7 @@ import java.net.UnknownHostException;
 import java.rmi.Naming;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.Map;
 import java.util.TreeMap;
@@ -18,8 +19,10 @@ import edu.uiuc.boltdb.groupmembership.beans.MembershipBean;
 
 public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol {
 
-	
-	private static final long serialVersionUID = 1L;
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 5195393553928167809L;
 
 	protected BoltDBServer() throws RemoteException {
 		super();
@@ -35,6 +38,7 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 		Runnable groupMembership = new GroupMembership(args);
 		Thread groupMembershipThread = new Thread(groupMembership);
 		groupMembershipThread.start();
+		LocateRegistry.createRegistry(1099);
 		Naming.rebind ("KVStore", new BoltDBServer());
         System.out.println ("Server is ready.");
         
