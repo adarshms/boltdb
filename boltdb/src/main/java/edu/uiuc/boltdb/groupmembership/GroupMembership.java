@@ -6,7 +6,9 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.Properties;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -206,5 +208,21 @@ public class GroupMembership implements Runnable {
 		    hashValue = hashValue*31 + pid.charAt(i);
 		}
 		return hashValue % 1000001L;
+	}
+	
+	public static String getSuccessorNodeOf(long keyHash) {
+		Iterator<Entry<String,MembershipBean>> itr = GroupMembership.membershipList.entrySet().iterator();
+		long minClockwiseDistance = 1000000L;
+		String successorNode = new String();
+		while(itr.hasNext()) {
+			Entry<String,MembershipBean> entry = itr.next();
+			long hashCurrent = entry.getValue().hashValue;
+			long clockWiseDistance = keyHash > hashCurrent ? 1000000l - (keyHash - hashCurrent) : hashCurrent - keyHash;
+			if(minClockwiseDistance > clockWiseDistance) {
+				minClockwiseDistance = clockWiseDistance;
+				successorNode = entry.getKey();
+			}
+		}
+		return successorNode;
 	}
 }
