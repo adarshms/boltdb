@@ -14,6 +14,7 @@ import java.rmi.server.UnicastRemoteObject;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import edu.uiuc.boltdb.groupmembership.GroupMembership;
 
@@ -31,7 +32,7 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 	/**
 	 * @param args
 	 */
-	public static Map<Long,String> KVStore = new HashMap<Long,String>();
+	public static Map<Long,String> KVStore = new ConcurrentHashMap<Long,String>();
 
 
 	public static void main(String[] args) throws IOException {
@@ -44,6 +45,7 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 	}
 	
 	public void insert(long key, String value, boolean canBeForwarded) throws RemoteException {
+		if(!canBeForwarded) KVStore.put(key, value);
 		String targetHost = null;
 		try {
 			targetHost = GroupMembership.getSuccessorNodeOf(GroupMembership.computeHash((new Long(key).toString())));

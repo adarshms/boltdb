@@ -8,6 +8,7 @@ import java.net.UnknownHostException;
 import java.rmi.Naming;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
+import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -81,8 +82,9 @@ public class MergeThread implements Runnable
 	 * @throws NotBoundException 
 	 * @throws RemoteException 
 	 * @throws MalformedURLException 
+	 * @throws NoSuchAlgorithmException 
 	 */
-	private void mergeIncomingMembershipList() throws UnknownHostException, MalformedURLException, RemoteException, NotBoundException 
+	private void mergeIncomingMembershipList() throws UnknownHostException, MalformedURLException, RemoteException, NotBoundException, NoSuchAlgorithmException 
 	{
 		Iterator<Map.Entry<String, UDPBean>> iterator = incomingMembershipList.entrySet().iterator();
 		//Iterate over each entry of incoming membershiplist
@@ -137,7 +139,7 @@ public class MergeThread implements Runnable
 				MembershipBean returnVal = GroupMembership.membershipList.putIfAbsent(receivedPid, mBean);
 				if (returnVal == null) 
 				{
-					//System.out.println("JOINED : " + receivedPid+" at "+(new Date()).toString());
+					System.out.println("JOINED : " + receivedPid+" at "+(new Date()).toString());
 					log.info("JOINED - - - " + receivedPid);
 					boolean amISuccessor = amITheSuccesorOf(receivedPid);
 					
@@ -151,20 +153,38 @@ public class MergeThread implements Runnable
 	
 	private boolean amITheSuccesorOf(String receivedPid) throws UnknownHostException {
 		long hashOfNewlyJoinedNode = GroupMembership.membershipList.get(receivedPid).hashValue;
-		if(GroupMembership.getSuccessorNodeOf(hashOfNewlyJoinedNode) == InetAddress.getLocalHost().getHostName()) return true;
+		System.out.println("hash of new:"+hashOfNewlyJoinedNode);
+		System.out.println("successor node:"+GroupMembership.getSuccessorNodeOf(hashOfNewlyJoinedNode));
+		if(GroupMembership.getSuccessorNodeOf(hashOfNewlyJoinedNode).equals(InetAddress.getLocalHost().getHostName())) return true;
 		return false;
 	}
 	
-	private void moveKeys(String targetHost, long hashOfNewJoinedNode) throws MalformedURLException, RemoteException, NotBoundException {
+	private void moveKeys(String targetHost, long hashOfNewJoinedNode) throws MalformedURLException, RemoteException, NotBoundException, NoSuchAlgorithmException {
+		System.out.println("Moving keys:");
 		BoltDBProtocol targetRMIServer = (BoltDBProtocol) Naming.lookup("rmi://" + targetHost + "/KVStore");
 		Iterator<Entry<Long,String>> itr = BoltDBServer.KVStore.entrySet().iterator();
 		long myHash = GroupMembership.membershipList.get(GroupMembership.pid).hashValue;
 		while(itr.hasNext()) {
 			Entry<Long,String> entry = itr.next();
-			if (entry.getKey() > myHash || entry.getKey() <= hashOfNewJoinedNode) {
+			long hashOfKey = GroupMembership.computeHash(entry.getKey().toString());
+			System.out.println("hash of "+entry.getKey()+" is "+hashOfKey);
+			System.out.println("my hash is:"+myHash);
+			System.out.println("hash of new guy:"+hashOfNewJoinedNode);
+			System.out.println("value of condition:"+(hashOfKey > myHash && hashOfKey <= hashOfNewJoinedNode));
+			if (myHash > hashOfNewJoinedNode) {
+				if ( hashOfKey > myHash || hashOfKey <= hashOfNewJoinedNode) {
+					System.out.println("Moving key:"+entry.getKey());
+					targetRMIServer.insert(entry.getKey(), entry.getValue(),false);
+					BoltDBServer.KVStore.remove(entry.getKey());
+				} 
+			}
+			else {
+				if ( hashOfKey > myHash && hashOfKey <= hashOfNewJoinedNode) {
+				System.out.println("Moving key:"+entry.getKey());
 				targetRMIServer.insert(entry.getKey(), entry.getValue(),false);
 				BoltDBServer.KVStore.remove(entry.getKey());
-			} 
+				} 
+			}
 		}
 	}
 }

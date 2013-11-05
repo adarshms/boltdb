@@ -197,12 +197,13 @@ public class GroupMembership implements Runnable {
 					//Move your keys to successor
 					long myHash = GroupMembership.membershipList.get(GroupMembership.pid).hashValue;
 					String successor = getSuccessorNodeOf(myHash);
-					
+					System.out.println("successor:"+successor);
 					BoltDBProtocol successorRMIServer = (BoltDBProtocol) Naming.lookup("rmi://" + successor + "/KVStore");
 					Iterator<Entry<Long,String>> itr = BoltDBServer.KVStore.entrySet().iterator();
 					
 					while(itr.hasNext()) {
 						Entry<Long,String> entry = itr.next();
+						System.out.println("inserting:"+entry.getKey());
 						successorRMIServer.insert(entry.getKey(), entry.getValue(), false);
 					}
 					BoltDBServer.KVStore.clear();
@@ -256,6 +257,7 @@ public class GroupMembership implements Runnable {
 		String successorHost = new String();
 		while(itr.hasNext()) {
 			Entry<String,MembershipBean> entry = itr.next();
+			if(entry.getValue().hashValue == keyHash) continue;
 			long hashCurrent = entry.getValue().hashValue;
 			long clockWiseDistance = keyHash > hashCurrent ? 1000000l - (keyHash - hashCurrent) : hashCurrent - keyHash;
 			if(minClockwiseDistance > clockWiseDistance) {
