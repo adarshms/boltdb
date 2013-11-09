@@ -186,7 +186,7 @@ public class GroupMembership implements Runnable {
 					new InputStreamReader(System.in));
 			while (true) {
 				// Read user's input
-				System.out.print("boltdb>");
+				System.out.print("boltdb-server>");
 				String commandString = bufferRead.readLine();
 				if (commandString.equals(""))
 					continue;
@@ -197,13 +197,11 @@ public class GroupMembership implements Runnable {
 					//Move your keys to successor
 					long myHash = GroupMembership.membershipList.get(GroupMembership.pid).hashValue;
 					String successor = getSuccessorNodeOf(myHash);
-					System.out.println("successor:"+successor);
 					BoltDBProtocol successorRMIServer = (BoltDBProtocol) Naming.lookup("rmi://" + successor + "/KVStore");
 					Iterator<Entry<Long,String>> itr = BoltDBServer.KVStore.entrySet().iterator();
 					
 					while(itr.hasNext()) {
 						Entry<Long,String> entry = itr.next();
-						System.out.println("inserting:"+entry.getKey());
 						successorRMIServer.insert(entry.getKey(), entry.getValue(), false);
 					}
 					BoltDBServer.KVStore.clear();
@@ -215,7 +213,6 @@ public class GroupMembership implements Runnable {
 					Thread gossipOneLastTime = new Thread(new SendGossipThread(
 							0));
 					gossipOneLastTime.start();
-					System.out.println("going to break");
 					break;
 				}
 				else if(commandString.equals("show")) {

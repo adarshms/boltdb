@@ -16,7 +16,6 @@ public class BoltDBClient {
 	private BoltDBProtocol boltDBServer = null;
 	
 	public BoltDBClient(String rmiString) throws MalformedURLException, RemoteException, NotBoundException {
-		System.out.println(rmiString);
 		if(System.getSecurityManager() == null) {
 			System.setSecurityManager(new SecurityManager());
 		}
@@ -29,18 +28,16 @@ public class BoltDBClient {
 	 * @throws NotBoundException 
 	 */
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub
 		try {
 			Properties prop = new Properties();
 			FileInputStream fis = new FileInputStream("./boltdb.prop");
 			prop.load(fis);
 			fis.close();
-			String rmiString = prop.getProperty("boltdb.server");
+			String rmiString = prop.getProperty("boltdb.kvstore.server");
 			BoltDBClient boltDBClient = new BoltDBClient(rmiString);
 			boltDBClient.runClientShell();
 		} catch(Exception e) {
 			e.printStackTrace();
-			System.out.println("Operation Failed");
 		}
 	}
 	
@@ -52,7 +49,7 @@ public class BoltDBClient {
 		 // Break out with Ctrl+C
 		while (true) {
 		  // Read user's input
-		  System.out.print("boltdb>");
+		  System.out.print("boltdb-client>");
 		  commandString = console.readLine();
 
 		  // If the user entered a return, just loop again
@@ -62,61 +59,72 @@ public class BoltDBClient {
 		}
 	}
 	
-	private void handleCommand(String commandString) throws RemoteException {
-		StringTokenizer stk = new StringTokenizer(commandString);
-		if(stk.countTokens() < 2) {
-			printUsage(0);
-			return;
-		}
-		
-		// The Command Type
-		String commandType = stk.nextToken();
-		
-		if(commandType.equals("insert")) {
-			String keyStr = stk.nextToken();
-			long key = parseKey(keyStr);
-			if(key == -1) return;
-			String value = "";
-			if(stk.hasMoreTokens()) {
-				value = stk.nextToken();
-			}
-			else {
-				printUsage(1);
+	private void handleCommand(String commandString) {
+		try {
+			StringTokenizer stk = new StringTokenizer(commandString);
+			if(stk.countTokens() < 2) {
+				printUsage(0);
 				return;
 			}
-			// Perform Insert Operation
-			boltDBServer.insert(key, value, true);
-		} else if(commandType.equals("update")) {
-			String keyStr = stk.nextToken();
-			long key = parseKey(keyStr);
-			if(key == -1) return;
-			String value = "";
-			if(stk.hasMoreTokens()) {
-				value = stk.nextToken();
-			}
-			else {
-				printUsage(2);
+			
+			// The Command Type
+			String commandType = stk.nextToken();
+			
+			if(commandType.equals("insert")) {
+				String keyStr = stk.nextToken();
+				long key = parseKey(keyStr);
+				if(key == -1) return;
+				String value = "";
+				if(stk.hasMoreTokens()) {
+					while(stk.hasMoreTokens())
+						value += stk.nextToken() + " ";
+				}
+				else {
+					printUsage(1);
+					return;
+				}
+				value = value.trim();
+				// Perform Insert Operation
+				boltDBServer.insert(key, value, true);
+			} else if(commandType.equals("update")) {
+				String keyStr = stk.nextToken();
+				long key = parseKey(keyStr);
+				if(key == -1) return;
+				String value = "";
+				if(stk.hasMoreTokens()) {
+					while(stk.hasMoreTokens())
+						value += stk.nextToken() + " ";
+				}
+				else {
+					printUsage(2);
+					return;
+				}
+				value = value.trim();
+				// Perform Update Operation
+				boltDBServer.update(key, value, true);
+			} else if(commandType.equals("lookup")) {
+				String keyStr = stk.nextToken();
+				long key = parseKey(keyStr);
+				if(key == -1) return;
+				// Perform Look Up Operation
+				String value = (String)boltDBServer.lookup(key, true);
+				System.out.println("Look Up Result : " + value);
+			} else if(commandType.equals("delete")) {
+				String keyStr = stk.nextToken();
+				long key = parseKey(keyStr);
+				if(key == -1) return;
+				// Perform Delete Operation
+				boltDBServer.delete(key, true);
+				System.out.println("Key Value Pair Deleted");
+			} else {
+				printUsage(0);
 				return;
 			}
-			// Perform Update Operation
-			boltDBServer.update(key, value, true);
-		} else if(commandType.equals("lookup")) {
-			String keyStr = stk.nextToken();
-			long key = parseKey(keyStr);
-			if(key == -1) return;
-			// Perform Look Up Operation
-			String value = (String)boltDBServer.lookup(key, true);
-			System.out.println("Look Up Result : " + value);
-		} else if(commandType.equals("delete")) {
-			String keyStr = stk.nextToken();
-			long key = parseKey(keyStr);
-			if(key == -1) return;
-			// Perform Delete Operation
-			boltDBServer.delete(key, true);
-			System.out.println("Key Value Pair Deleted");
-		} else {
-			printUsage(0);
-			return;
+		} catch(RemoteException re) {
+			if(re.getCause().getCause() != null)
+				System.out.println(re.getCause().getCause().getMessage());
+			else
+				System.out.println(re.getCause().getMessage());
 		}
 	}
 

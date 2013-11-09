@@ -1,20 +1,15 @@
 package edu.uiuc.boltdb;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.net.InetAddress;
-import java.net.MalformedURLException;
-import java.net.UnknownHostException;
 import java.rmi.Naming;
-import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
-import java.security.NoSuchAlgorithmException;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import org.apache.log4j.Logger;
 
 import edu.uiuc.boltdb.groupmembership.GroupMembership;
 
@@ -24,7 +19,8 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 	 * 
 	 */
 	private static final long serialVersionUID = 5195393553928167809L;
-
+	private static org.apache.log4j.Logger log = Logger.getRootLogger();
+	
 	protected BoltDBServer() throws RemoteException {
 		super();
 	}
@@ -45,111 +41,105 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 	}
 	
 	public void insert(long key, String value, boolean canBeForwarded) throws RemoteException {
-		if(!canBeForwarded) KVStore.put(key, value);
+		if(!canBeForwarded) {
+			if(KVStore.containsKey(key))
+				throw new RemoteException("Key already present.");
+			KVStore.put(key, value);
+			return;
+		}
 		String targetHost = null;
 		try {
 			targetHost = GroupMembership.getSuccessorNodeOf(GroupMembership.computeHash((new Long(key).toString())));
-		} catch (NoSuchAlgorithmException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-		try {
 			if(targetHost.equals(InetAddress.getLocalHost().getHostName())) {
+				if(KVStore.containsKey(key))
+					throw new RemoteException("Key already present.");
 				KVStore.put(key, value);
-			} else if(canBeForwarded){
+			} else {
 				BoltDBProtocol targetServer = (BoltDBProtocol) Naming.lookup("rmi://" + targetHost + "/KVStore");
 				targetServer.insert(key, value, false);
 			}
-		} catch (UnknownHostException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (MalformedURLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (NotBoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		} catch(RemoteException re) {
+			throw re;
+		} catch (Exception e) {
+			log.error("ERROR" , e);
+			throw new RemoteException("Error occured at Server");
+		} 
 	}
 
 	public String lookup(long key, boolean canBeForwarded) throws RemoteException {
-		if(checkLocalStore(key)) {
+		if(!canBeForwarded) {
+			if(!KVStore.containsKey(key))
+				throw new RemoteException("Key not present.");
 			return KVStore.get(key);
-		} else if(canBeForwarded){
-			try {
-				String targetHost = null;
-				try {
-					targetHost = GroupMembership.getSuccessorNodeOf(GroupMembership.computeHash((new Long(key).toString())));
-				} catch (NoSuchAlgorithmException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-				BoltDBProtocol targetServer = (BoltDBProtocol) Naming.lookup("rmi://" + targetHost + "/KVStore");
-				return targetServer.lookup(key, false);
-			} catch (MalformedURLException e) {
-					e.printStackTrace();
-			} catch (NotBoundException e) {
-					e.printStackTrace();
-			}
 		}
-		return null;
-
-	}
-
-	public void update(long key, String value, boolean canBeForwarded) throws RemoteException {
 		String targetHost = null;
 		try {
 			targetHost = GroupMembership.getSuccessorNodeOf(GroupMembership.computeHash((new Long(key).toString())));
-		} catch (NoSuchAlgorithmException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-		try {
 			if(targetHost.equals(InetAddress.getLocalHost().getHostName())) {
+				if(!KVStore.containsKey(key))
+					throw new RemoteException("Key not present.");
+				return KVStore.get(key);
+			} else {
+				BoltDBProtocol targetServer = (BoltDBProtocol) Naming.lookup("rmi://" + targetHost + "/KVStore");
+				return targetServer.lookup(key, false);
+			}
+		} catch(RemoteException re) {
+			throw re;
+		} catch (Exception e) {
+			log.error("ERROR" , e);
+			throw new RemoteException("Error occured at Server");
+		}
+	}
+
+	public void update(long key, String value, boolean canBeForwarded) throws RemoteException {
+		if(!canBeForwarded) {
+			if(!KVStore.containsKey(key))
+				throw new RemoteException("Key not present.");
+			KVStore.put(key, value);
+			return;
+		}
+		String targetHost = null;
+		try {
+			targetHost = GroupMembership.getSuccessorNodeOf(GroupMembership.computeHash((new Long(key).toString())));
+			if(targetHost.equals(InetAddress.getLocalHost().getHostName())) {
+				if(!KVStore.containsKey(key))
+					throw new RemoteException("Key not present.");
 				KVStore.put(key, value);
-			} else if(canBeForwarded) {
+			} else {
 				BoltDBProtocol targetServer = (BoltDBProtocol) Naming.lookup("rmi://" + targetHost + "/KVStore");
 				targetServer.update(key, value, false);
 			}
-		} catch (UnknownHostException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (MalformedURLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (NotBoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		} catch(RemoteException re) {
+			throw re;
+		} catch (Exception e) {
+			log.error("ERROR" , e);
+			throw new RemoteException("Error occured at Server");
 		}
 	}
 
 	public void delete(long key, boolean canBeForwarded) throws RemoteException {
-		if(checkLocalStore(key)) {
+		if(!canBeForwarded) {
+			if(!KVStore.containsKey(key))
+				throw new RemoteException("Key not present.");
 			KVStore.remove(key);
 			return;
-		} else if(canBeForwarded){
-			try {
-				String targetHost = null;
-				try {
-					targetHost = GroupMembership.getSuccessorNodeOf(GroupMembership.computeHash((new Long(key).toString())));
-				} catch (NoSuchAlgorithmException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
+		}
+		String targetHost = null;
+		try {
+			targetHost = GroupMembership.getSuccessorNodeOf(GroupMembership.computeHash((new Long(key).toString())));
+			if(targetHost.equals(InetAddress.getLocalHost().getHostName())) {
+				if(!KVStore.containsKey(key))
+					throw new RemoteException("Key not present.");
+				KVStore.remove(key);
+			} else {
 				BoltDBProtocol targetServer = (BoltDBProtocol) Naming.lookup("rmi://" + targetHost + "/KVStore");
 				targetServer.delete(key, false);
-				return;
-			} catch (MalformedURLException e) {
-					e.printStackTrace();
-			} catch (NotBoundException e) {
-					e.printStackTrace();
 			}
-		}
-
-
-	}
-
-	private boolean checkLocalStore(long key) {
-		return KVStore.containsKey(key);
+		} catch(RemoteException re) {
+			throw re;
+		} catch (Exception e) {
+			log.error("ERROR" , e);
+			throw new RemoteException("Error occured at Server");
+		}		
 	}
 }
