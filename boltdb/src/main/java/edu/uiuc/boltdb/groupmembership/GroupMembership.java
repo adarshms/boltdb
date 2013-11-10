@@ -216,6 +216,10 @@ public class GroupMembership implements Runnable {
 					gossipOneLastTime.start();
 					break;
 				}
+				/*
+				 * The show command prints the current membershipList entries and the current KVStore
+				 * entries on the console.
+				 */
 				else if(commandString.equals("show")) {
 					System.out.println("-------------------------------------------------");
 					System.out.println("Membership List : ");

@@ -11,6 +11,16 @@ import java.rmi.RemoteException;
 import java.util.Properties;
 import java.util.StringTokenizer;
 
+/**
+ * This class represents the client component of the distributed key value store. On start up it creates 
+ * a boltdb-client> shell where the user can type in the insert, update, lookup and delete queries. 
+ * The BoltDBClient class creates a reference to a remote BoltDBServer object in the member variable boltDBServer.
+ * All the operations (insert, lookup, update and delete) are performed on this remote object reference.  
+ * 
+ * @author Adarsh
+ *
+ */
+
 public class BoltDBClient {
 	
 	private BoltDBProtocol boltDBServer = null;
@@ -41,6 +51,7 @@ public class BoltDBClient {
 		}
 	}
 	
+	// Method to simulate a boltdb-client shell
 	private void runClientShell() throws IOException {
 		// Simulate a unix shell
 		 String commandString = "";
@@ -59,6 +70,7 @@ public class BoltDBClient {
 		}
 	}
 	
+	// This method handles the commands entered by the user in the boltdb-client shell
 	private void handleCommand(String commandString) {
 		try {
 			StringTokenizer stk = new StringTokenizer(commandString);
@@ -84,7 +96,7 @@ public class BoltDBClient {
 					return;
 				}
 				value = value.trim();
-				// Perform Insert Operation
+				// Perform Insert Operation on the remote server object
 				boltDBServer.insert(key, value, true);
 			} else if(commandType.equals("update")) {
 				String keyStr = stk.nextToken();
@@ -100,20 +112,20 @@ public class BoltDBClient {
 					return;
 				}
 				value = value.trim();
-				// Perform Update Operation
+				// Perform Update Operation on the remote server object
 				boltDBServer.update(key, value, true);
 			} else if(commandType.equals("lookup")) {
 				String keyStr = stk.nextToken();
 				long key = parseKey(keyStr);
 				if(key == -1) return;
-				// Perform Look Up Operation
+				// Perform LookUp Operation on the remote server object
 				String value = (String)boltDBServer.lookup(key, true);
 				System.out.println("Look Up Result : " + value);
 			} else if(commandType.equals("delete")) {
 				String keyStr = stk.nextToken();
 				long key = parseKey(keyStr);
 				if(key == -1) return;
-				// Perform Delete Operation
+				// Perform Delete Operation on the remote server object
 				boltDBServer.delete(key, true);
 				System.out.println("Key Value Pair Deleted");
 			} else {
@@ -128,6 +140,7 @@ public class BoltDBClient {
 		}
 	}
 
+	// Method to parse the key entered by the user to long, and to validate the key 
 	private long parseKey(String keyStr) {
 		long key;
 		try {
@@ -143,6 +156,7 @@ public class BoltDBClient {
 		}
 	}
 	
+	// Method to print the usage of BoltDBClient
 	private void printUsage(int type) {
 		System.out.println("Invalid Command");
 		System.out.println("Usage : ");
