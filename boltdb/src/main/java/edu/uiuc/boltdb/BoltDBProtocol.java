@@ -3,6 +3,9 @@ package edu.uiuc.boltdb;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 
+/**
+ * 
+ */
 public interface BoltDBProtocol extends Remote {
 
 	public void insert(long key, String value, boolean canBeForwarded) throws RemoteException;
