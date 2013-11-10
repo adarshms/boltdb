@@ -104,6 +104,7 @@ public class GroupMembership implements Runnable {
 				initializeLogger(args[3]);
 			}
 			
+			//Compute the hashvalue of yourself(server)
 			long hashValue = computeHash(pid);
 			
 			// Insert the current machine into the membership list with
@@ -242,21 +243,37 @@ public class GroupMembership implements Runnable {
 
 	}
 	
+	/**
+	 * Computes the MD5 hash of the pid,transforms it into an integer
+	 * and hashes it in the range 0-1 million.
+	 * @param pid
+	 * @return
+	 * @throws NoSuchAlgorithmException
+	 */
 	public static long computeHash(String pid) throws NoSuchAlgorithmException {
 		MessageDigest md = MessageDigest.getInstance("MD5");
 		BigInteger bigInt = new BigInteger(1, md.digest(pid.getBytes()));
 		return Math.abs(bigInt.longValue()) % 1000001L;
 	}
 	
+	/**
+	 * Returns the node which is the successor of a key.
+	 * @param keyHash
+	 * @return
+	 */
 	public static String getSuccessorNodeOf(long keyHash) {
 		Iterator<Entry<String,MembershipBean>> itr = GroupMembership.membershipList.entrySet().iterator();
+		//Set the minimum clockwise distance to be  maximum possible value
 		long minClockwiseDistance = 1000000L;
 		String successorHost = new String();
 		while(itr.hasNext()) {
 			Entry<String,MembershipBean> entry = itr.next();
+			//Ignore if the entry is yourself(Server)
 			if(entry.getValue().hashValue == keyHash) continue;
 			long hashCurrent = entry.getValue().hashValue;
+			//compute the clockwise distance
 			long clockWiseDistance = keyHash > hashCurrent ? 1000000l - (keyHash - hashCurrent) : hashCurrent - keyHash;
+			//Update minimum clockwise distance if required
 			if(minClockwiseDistance > clockWiseDistance) {
 				minClockwiseDistance = clockWiseDistance;
 				successorHost = entry.getValue().hostname;
