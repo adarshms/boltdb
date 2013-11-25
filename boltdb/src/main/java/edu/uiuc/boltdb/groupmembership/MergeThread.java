@@ -117,18 +117,6 @@ public class MergeThread implements Runnable
 					GroupMembership.membershipList.put(receivedPid, currentMBean);
 					continue;
 				} else if (receivedMBean.hearbeatLastReceived <= 0 || currentMBean.hearbeatLastReceived <= 0) continue;
-				
-				//If the incoming entry's heartbeat is greater than current node's membership list,then update the list.
-				/*if(receivedMBean.hearbeatLastReceived > currentMBean.hearbeatLastReceived) 
-				{
-					currentMBean.hearbeatLastReceived = receivedMBean.hearbeatLastReceived;
-					currentMBean.timeStamp = System.currentTimeMillis();
-					if(currentMBean.toBeDeleted) {
-						System.out.println("JOINED : " + receivedPid);
-						currentMBean.toBeDeleted = false;
-					}
-					GroupMembership.membershipList.put(receivedPid, currentMBean);
-				}*/
 			} 
 			else if(!GroupMembership.membershipList.containsKey(receivedPid) && receivedMBean.hearbeatLastReceived > 0) 
 			{
@@ -139,11 +127,13 @@ public class MergeThread implements Runnable
 				MembershipBean returnVal = GroupMembership.membershipList.putIfAbsent(receivedPid, mBean);
 				if (returnVal == null) 
 				{
-					System.out.println("JOINED : " + receivedPid+" at "+(new Date()).toString());
+					//System.out.println("JOINED : " + receivedPid+" at "+(new Date()).toString());
 					log.info("JOINED - - - " + receivedPid);
+					//Get the successor of newly joined node
 					boolean amISuccessor = amITheSuccesorOf(receivedPid);
 					
 					if(amISuccessor) {
+						//If you are the successor,move keys accordingly. 
 						moveKeys(receivedHost,mBean.hashValue);
 					}
 				}
@@ -151,36 +141,48 @@ public class MergeThread implements Runnable
 		}
 	}
 	
+	/**
+	 * Check if I am the successor of the newly joined node.
+	 * @param receivedPid
+	 * @return
+	 * @throws UnknownHostException
+	 */
 	private boolean amITheSuccesorOf(String receivedPid) throws UnknownHostException {
 		long hashOfNewlyJoinedNode = GroupMembership.membershipList.get(receivedPid).hashValue;
-		System.out.println("hash of new:"+hashOfNewlyJoinedNode);
-		System.out.println("successor node:"+GroupMembership.getSuccessorNodeOf(hashOfNewlyJoinedNode));
 		if(GroupMembership.getSuccessorNodeOf(hashOfNewlyJoinedNode).equals(InetAddress.getLocalHost().getHostName())) return true;
 		return false;
 	}
 	
+	/**
+	 * Move keys from yourself to the newly joined node just like in the chord paper
+	 * @param targetHost
+	 * @param hashOfNewJoinedNode
+	 * @throws MalformedURLException
+	 * @throws RemoteException
+	 * @throws NotBoundException
+	 * @throws NoSuchAlgorithmException
+	 */
 	private void moveKeys(String targetHost, long hashOfNewJoinedNode) throws MalformedURLException, RemoteException, NotBoundException, NoSuchAlgorithmException {
-		System.out.println("Moving keys:");
+		//get the rmiserver handle from the rmi registry
 		BoltDBProtocol targetRMIServer = (BoltDBProtocol) Naming.lookup("rmi://" + targetHost + "/KVStore");
 		Iterator<Entry<Long,String>> itr = BoltDBServer.KVStore.entrySet().iterator();
 		long myHash = GroupMembership.membershipList.get(GroupMembership.pid).hashValue;
 		while(itr.hasNext()) {
 			Entry<Long,String> entry = itr.next();
 			long hashOfKey = GroupMembership.computeHash(entry.getKey().toString());
-			System.out.println("hash of "+entry.getKey()+" is "+hashOfKey);
-			System.out.println("my hash is:"+myHash);
-			System.out.println("hash of new guy:"+hashOfNewJoinedNode);
-			System.out.println("value of condition:"+(hashOfKey > myHash && hashOfKey <= hashOfNewJoinedNode));
+			//If hash of current server is greater than hash of newly joined server
+			//then move all the keys greater than hash of current server
+			//and less than newly joined server.
 			if (myHash > hashOfNewJoinedNode) {
 				if ( hashOfKey > myHash || hashOfKey <= hashOfNewJoinedNode) {
-					System.out.println("Moving key:"+entry.getKey());
 					targetRMIServer.insert(entry.getKey(), entry.getValue(),false);
 					BoltDBServer.KVStore.remove(entry.getKey());
 				} 
 			}
+			//If hasf of current server is less than hash of newly joined server
+			//then move all the keys in between the two servers hashes.
 			else {
 				if ( hashOfKey > myHash && hashOfKey <= hashOfNewJoinedNode) {
-				System.out.println("Moving key:"+entry.getKey());
 				targetRMIServer.insert(entry.getKey(), entry.getValue(),false);
 				BoltDBServer.KVStore.remove(entry.getKey());
 				} 

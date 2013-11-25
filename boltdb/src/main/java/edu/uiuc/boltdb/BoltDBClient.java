@@ -11,12 +11,21 @@ import java.rmi.RemoteException;
 import java.util.Properties;
 import java.util.StringTokenizer;
 
+/**
+ * This class represents the client component of the distributed key value store. On start up it creates 
+ * a boltdb-client> shell where the user can type in the insert, update, lookup and delete queries. 
+ * The BoltDBClient class creates a reference to a remote BoltDBServer object in the member variable boltDBServer.
+ * All the operations (insert, lookup, update and delete) are performed on this remote object reference.  
+ * 
+ * @author Adarsh
+ *
+ */
+
 public class BoltDBClient {
 	
 	private BoltDBProtocol boltDBServer = null;
 	
 	public BoltDBClient(String rmiString) throws MalformedURLException, RemoteException, NotBoundException {
-		System.out.println(rmiString);
 		if(System.getSecurityManager() == null) {
 			System.setSecurityManager(new SecurityManager());
 		}
@@ -29,21 +38,20 @@ public class BoltDBClient {
 	 * @throws NotBoundException 
 	 */
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub
 		try {
 			Properties prop = new Properties();
 			FileInputStream fis = new FileInputStream("./boltdb.prop");
 			prop.load(fis);
 			fis.close();
-			String rmiString = prop.getProperty("boltdb.server");
+			String rmiString = prop.getProperty("boltdb.kvstore.server");
 			BoltDBClient boltDBClient = new BoltDBClient(rmiString);
 			boltDBClient.runClientShell();
 		} catch(Exception e) {
 			e.printStackTrace();
-			System.out.println("Operation Failed");
 		}
 	}
 	
+	// Method to simulate a boltdb-client shell
 	private void runClientShell() throws IOException {
 		// Simulate a unix shell
 		 String commandString = "";
@@ -52,7 +60,7 @@ public class BoltDBClient {
 		 // Break out with Ctrl+C
 		while (true) {
 		  // Read user's input
-		  System.out.print("boltdb>");
+		  System.out.print("boltdb-client>");
 		  commandString = console.readLine();
 
 		  // If the user entered a return, just loop again
@@ -62,64 +70,77 @@ public class BoltDBClient {
 		}
 	}
 	
-	private void handleCommand(String commandString) throws RemoteException {
-		StringTokenizer stk = new StringTokenizer(commandString);
-		if(stk.countTokens() < 2) {
-			printUsage(0);
-			return;
-		}
-		
-		// The Command Type
-		String commandType = stk.nextToken();
-		
-		if(commandType.equals("insert")) {
-			String keyStr = stk.nextToken();
-			long key = parseKey(keyStr);
-			if(key == -1) return;
-			String value = "";
-			if(stk.hasMoreTokens()) {
-				value = stk.nextToken();
-			}
-			else {
-				printUsage(1);
+	// This method handles the commands entered by the user in the boltdb-client shell
+	private void handleCommand(String commandString) {
+		try {
+			StringTokenizer stk = new StringTokenizer(commandString);
+			if(stk.countTokens() < 2) {
+				printUsage(0);
 				return;
 			}
-			// Perform Insert Operation
-			boltDBServer.insert(key, value, true);
-		} else if(commandType.equals("update")) {
-			String keyStr = stk.nextToken();
-			long key = parseKey(keyStr);
-			if(key == -1) return;
-			String value = "";
-			if(stk.hasMoreTokens()) {
-				value = stk.nextToken();
-			}
-			else {
-				printUsage(2);
+			
+			// The Command Type
+			String commandType = stk.nextToken();
+			
+			if(commandType.equals("insert")) {
+				String keyStr = stk.nextToken();
+				long key = parseKey(keyStr);
+				if(key == -1) return;
+				String value = "";
+				if(stk.hasMoreTokens()) {
+					while(stk.hasMoreTokens())
+						value += stk.nextToken() + " ";
+				}
+				else {
+					printUsage(1);
+					return;
+				}
+				value = value.trim();
+				// Perform Insert Operation on the remote server object
+				boltDBServer.insert(key, value, true);
+			} else if(commandType.equals("update")) {
+				String keyStr = stk.nextToken();
+				long key = parseKey(keyStr);
+				if(key == -1) return;
+				String value = "";
+				if(stk.hasMoreTokens()) {
+					while(stk.hasMoreTokens())
+						value += stk.nextToken() + " ";
+				}
+				else {
+					printUsage(2);
+					return;
+				}
+				value = value.trim();
+				// Perform Update Operation on the remote server object
+				boltDBServer.update(key, value, true);
+			} else if(commandType.equals("lookup")) {
+				String keyStr = stk.nextToken();
+				long key = parseKey(keyStr);
+				if(key == -1) return;
+				// Perform LookUp Operation on the remote server object
+				String value = (String)boltDBServer.lookup(key, true);
+				System.out.println("Look Up Result : " + value);
+			} else if(commandType.equals("delete")) {
+				String keyStr = stk.nextToken();
+				long key = parseKey(keyStr);
+				if(key == -1) return;
+				// Perform Delete Operation on the remote server object
+				boltDBServer.delete(key, true);
+				System.out.println("Key Value Pair Deleted");
+			} else {
+				printUsage(0);
 				return;
 			}
-			// Perform Update Operation
-			boltDBServer.update(key, value, true);
-		} else if(commandType.equals("lookup")) {
-			String keyStr = stk.nextToken();
-			long key = parseKey(keyStr);
-			if(key == -1) return;
-			// Perform Look Up Operation
-			String value = (String)boltDBServer.lookup(key, true);
-			System.out.println("Look Up Result : " + value);
-		} else if(commandType.equals("delete")) {
-			String keyStr = stk.nextToken();
-			long key = parseKey(keyStr);
-			if(key == -1) return;
-			// Perform Delete Operation
-			boltDBServer.delete(key, true);
-			System.out.println("Key Value Pair Deleted");
-		} else {
-			printUsage(0);
-			return;
+		} catch(RemoteException re) {
+			if(re.getCause().getCause() != null)
+				System.out.println(re.getCause().getCause().getMessage());
+			else
+				System.out.println(re.getCause().getMessage());
 		}
 	}
 
+	// Method to parse the key entered by the user to long, and to validate the key 
 	private long parseKey(String keyStr) {
 		long key;
 		try {
@@ -135,6 +156,7 @@ public class BoltDBClient {
 		}
 	}
 	
+	// Method to print the usage of BoltDBClient
 	private void printUsage(int type) {
 		System.out.println("Invalid Command");
 		System.out.println("Usage : ");
