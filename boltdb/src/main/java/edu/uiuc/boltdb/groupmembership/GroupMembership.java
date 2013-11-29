@@ -156,10 +156,10 @@ public class GroupMembership implements Runnable {
 			// property file
 			ScheduledExecutorService scheduler = Executors
 					.newSingleThreadScheduledExecutor();
-			//scheduler.scheduleAtFixedRate(new HeartbeatIncrementerThread(), 0,
-			//		Integer.parseInt(prop
-			//				.getProperty("groupmembership.heartbeat.freq")),
-			//		TimeUnit.MILLISECONDS);
+			scheduler.scheduleAtFixedRate(new HeartbeatIncrementerThread(), 0,
+					Integer.parseInt(prop
+							.getProperty("groupmembership.heartbeat.freq")),
+					TimeUnit.MILLISECONDS);
 			scheduler
 					.scheduleAtFixedRate(
 							new RefreshMembershipListThread(tFail),

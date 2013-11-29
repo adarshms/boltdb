@@ -95,7 +95,7 @@ public class MergeThread implements Runnable
 			UDPBean receivedMBean = entry.getValue();
 			
 			//Check if pid present in this entry is also present in our membership list.
-			if(GroupMembership.membershipList.containsKey(receivedPid) && receivedMBean.hearbeatLastReceived < 0) 
+			if(GroupMembership.membershipList.containsKey(receivedPid)) 
 			{
 				MembershipBean currentMBean = GroupMembership.membershipList.get(receivedPid);
 				
@@ -109,7 +109,7 @@ public class MergeThread implements Runnable
 				//VOLUNTARILY LEAVE : If the incoming entry has heartbeat less than zero,then log 'VOLUNTARILY LEFT' message.
 				//Also update current node's membership list
 				if(receivedMBean.hearbeatLastReceived <= 0 && currentMBean.hearbeatLastReceived > 0) {
-					//System.out.println("VOLUNTARILY LEFT : " + receivedPid+ " at "+(new Date()).toString());
+					System.out.println("VOLUNTARILY LEFT : " + receivedPid+ " at "+(new Date()).toString());
 					log.info("VOLUNTARILY LEFT - - - " + receivedPid);
 					currentMBean.hearbeatLastReceived = -1;
 					currentMBean.timeStamp = System.currentTimeMillis();
@@ -117,17 +117,29 @@ public class MergeThread implements Runnable
 					GroupMembership.membershipList.put(receivedPid, currentMBean);
 					continue;
 				} else if (receivedMBean.hearbeatLastReceived <= 0 || currentMBean.hearbeatLastReceived <= 0) continue;
-			} 
+				
+				//If the incoming entry's heartbeat is greater than current node's membership list,then update the list.
+                if(receivedMBean.hearbeatLastReceived > currentMBean.hearbeatLastReceived) 
+                {
+                        currentMBean.hearbeatLastReceived = receivedMBean.hearbeatLastReceived;
+                        currentMBean.timeStamp = System.currentTimeMillis();
+                        if(currentMBean.toBeDeleted) {
+                                System.out.println("JOINED : " + receivedPid);
+                                currentMBean.toBeDeleted = false;
+                        }
+                        GroupMembership.membershipList.put(receivedPid, currentMBean);
+                }
+			}
 			else if(!GroupMembership.membershipList.containsKey(receivedPid) && receivedMBean.hearbeatLastReceived > 0) 
 			{
 				//JOIN : If the incoming entry is not in our membership list then it means a new node has joined.
-				if(receivedMBean.hearbeatLastReceived <= 0) continue;
+				//if(receivedMBean.hearbeatLastReceived <= 0) continue;
 				String receivedHost = receivedPid.split(GroupMembership.pidDelimiter)[0];
 				MembershipBean mBean = new MembershipBean(receivedHost, receivedMBean.hearbeatLastReceived, System.currentTimeMillis(), receivedMBean.hashValue, false);
 				MembershipBean returnVal = GroupMembership.membershipList.putIfAbsent(receivedPid, mBean);
 				if (returnVal == null) 
 				{
-					//System.out.println("JOINED : " + receivedPid+" at "+(new Date()).toString());
+					System.out.println("JOINED : " + receivedPid+" at "+(new Date()).toString());
 					log.info("JOINED - - - " + receivedPid);
 					//Get the successor of newly joined node
 					boolean amISuccessor = amITheSuccesorOf(receivedPid);
