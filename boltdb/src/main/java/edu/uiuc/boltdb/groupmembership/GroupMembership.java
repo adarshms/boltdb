@@ -277,7 +277,8 @@ public class GroupMembership implements Runnable {
 					else if(checkCommand.equals("succ"))
 					{
 						long thisNode = Long.parseLong(stk.nextToken());
-						System.out.println("Successor of " + thisNode + " --> " + computeHash(getSuccessorNode(thisNode)));
+						int k = Integer.parseInt(stk.nextToken());
+						System.out.println("Successor of " + thisNode + " --> " + computeHash(getKthSuccessorNode(thisNode, k)));
 					}
 					else if(checkCommand.equals("pred"))
 					{
@@ -376,5 +377,16 @@ public class GroupMembership implements Runnable {
 				return (replicationFactor - k);
 		}
 		return -1;
+	}
+	
+	public static String getKthSuccessorNode(long aNode, int k) throws NoSuchAlgorithmException
+	{
+		String successorNode = new String();
+		while(k-- > 0)
+		{
+			successorNode = getSuccessorNode(aNode);
+			aNode = computeHash(successorNode);
+		}
+		return successorNode;
 	}
 }
