@@ -161,7 +161,7 @@ public class MergeThread implements Runnable
 	 */
 	private boolean amITheSuccesorOf(String receivedPid) throws UnknownHostException {
 		long hashOfNewlyJoinedNode = GroupMembership.membershipList.get(receivedPid).hashValue;
-		if(GroupMembership.getSuccessorNodeOf(hashOfNewlyJoinedNode).equals(InetAddress.getLocalHost().getHostName())) return true;
+		if(GroupMembership.getSuccessorNode(hashOfNewlyJoinedNode).equals(InetAddress.getLocalHost().getHostName())) return true;
 		return false;
 	}
 	

@@ -9,11 +9,13 @@ import java.net.InetAddress;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.rmi.Naming;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Map.Entry;
+import java.util.StringTokenizer;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -62,6 +64,7 @@ public class GroupMembership implements Runnable {
 	public static String pid = new String();
 	public static String pidDelimiter = "--";
 	public static long bandwidth = 0;
+	public static int replicationFactor = 1;
 	private String[] args;
 
 	public GroupMembership(String args[]) {
@@ -121,6 +124,9 @@ public class GroupMembership implements Runnable {
 			FileInputStream fis = new FileInputStream("./boltdb.prop");
 			prop.load(fis);
 			fis.close();
+			
+			// Set the replicaton factor from the properties file
+			replicationFactor = Integer.parseInt(prop.getProperty("groupmembership.rfactor"));
 
 			// Start the thread that listens to gossip messages.
 			Thread receiveGossip = new Thread(new ReceiveGossipThread());
@@ -197,7 +203,7 @@ public class GroupMembership implements Runnable {
 					scheduler.awaitTermination(100, TimeUnit.MILLISECONDS);
 					//Move your keys to successor
 					long myHash = GroupMembership.membershipList.get(GroupMembership.pid).hashValue;
-					String successor = getSuccessorNodeOf(myHash);
+					String successor = getSuccessorNode(myHash);
 					BoltDBProtocol successorRMIServer = (BoltDBProtocol) Naming.lookup("rmi://" + successor + "/KVStore");
 					Iterator<Entry<Long,String>> itr = BoltDBServer.KVStore.entrySet().iterator();
 					
@@ -240,6 +246,45 @@ public class GroupMembership implements Runnable {
 					System.out.println("-------------------------------------------------");
 					System.out.println();
 				}
+				else if(commandString.equals("ring")) {
+					System.out.println("-------------------------------------------------");
+					System.out.println("Node Ring : ");
+					int noOfNodes = membershipList.size();
+					long node = computeHash(this.pid);
+					while(noOfNodes-- > 0) {
+						System.out.print(node + " --> ");
+						node = computeHash(getSuccessorNode(node));
+					}
+					System.out.println("looparound");
+					System.out.println("-------------------------------------------------");
+					System.out.println();
+				}
+				else {
+					StringTokenizer stk = new StringTokenizer(commandString);
+					String checkCommand = stk.nextToken();
+					if(checkCommand.equals("checksucc"))
+					{
+						long thisNode = Long.parseLong(stk.nextToken());
+						long failedNode = Long.parseLong(stk.nextToken());
+						System.out.println("inSuccReReplicationSeg output --> " + inSuccReReplicationSeg(thisNode, failedNode));
+					}
+					else if(checkCommand.equals("checkpred"))
+					{
+						long thisNode = Long.parseLong(stk.nextToken());
+						long failedNode = Long.parseLong(stk.nextToken());
+						System.out.println("inPredReReplicationSeg output --> " + inPredReReplicationSeg(thisNode, failedNode));
+					}
+					else if(checkCommand.equals("succ"))
+					{
+						long thisNode = Long.parseLong(stk.nextToken());
+						System.out.println("Successor of " + thisNode + " --> " + computeHash(getSuccessorNode(thisNode)));
+					}
+					else if(checkCommand.equals("pred"))
+					{
+						long thisNode = Long.parseLong(stk.nextToken());
+						System.out.println("Predecessor of " + thisNode + " --> " + computeHash(getPredecessorNode(thisNode)));
+					}
+				}
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -265,24 +310,71 @@ public class GroupMembership implements Runnable {
 	 * @param keyHash
 	 * @return
 	 */
-	public static String getSuccessorNodeOf(long keyHash) {
+	public static String getSuccessorNode(long aNode) {
 		Iterator<Entry<String,MembershipBean>> itr = GroupMembership.membershipList.entrySet().iterator();
 		//Set the minimum clockwise distance to be  maximum possible value
 		long minClockwiseDistance = 1000000L;
-		String successorHost = new String();
+		String successorNode = new String();
 		while(itr.hasNext()) {
 			Entry<String,MembershipBean> entry = itr.next();
 			//Ignore if the entry is yourself(Server)
-			if(entry.getValue().hashValue == keyHash) continue;
+			if(entry.getValue().hashValue == aNode) continue;
 			long hashCurrent = entry.getValue().hashValue;
 			//compute the clockwise distance
-			long clockWiseDistance = keyHash > hashCurrent ? 1000000l - (keyHash - hashCurrent) : hashCurrent - keyHash;
+			long clockWiseDistance = aNode > hashCurrent ? 1000000l - (aNode - hashCurrent) : hashCurrent - aNode;
 			//Update minimum clockwise distance if required
 			if(minClockwiseDistance > clockWiseDistance) {
 				minClockwiseDistance = clockWiseDistance;
-				successorHost = entry.getValue().hostname;
+				successorNode = entry.getKey();
 			}
 		}
-		return successorHost;
+		return successorNode;
+	}
+	
+	
+	/**
+	 * Returns the node which is the predecessor of a key.
+	 * @param keyHash
+	 * @return
+	 */
+	public static String getPredecessorNode(long aNode) {
+		Iterator<Entry<String,MembershipBean>> itr = GroupMembership.membershipList.entrySet().iterator();
+		//Set the maximum clockwise distance to be  minimum possible value
+		long maxClockwiseDistance = 0L;
+		String predecessorNode = new String();
+		while(itr.hasNext()) {
+			Entry<String,MembershipBean> entry = itr.next();
+			//Ignore if the entry is yourself(Server)
+			if(entry.getValue().hashValue == aNode) continue;
+			long hashCurrent = entry.getValue().hashValue;
+			//compute the clockwise distance
+			long clockWiseDistance = aNode > hashCurrent ? 1000000L - (aNode - hashCurrent) : hashCurrent - aNode;
+			//Update minimum clockwise distance if required
+			if(maxClockwiseDistance < clockWiseDistance) {
+				maxClockwiseDistance = clockWiseDistance;
+				predecessorNode = entry.getKey();
+			}
+		}
+		return predecessorNode;
+	}
+	
+	public static int inSuccReReplicationSeg(long thisNode, long failedNode) throws NoSuchAlgorithmException
+	{
+		int k = replicationFactor;
+		while(k-- > 0) {
+			if((failedNode=computeHash(getSuccessorNode(failedNode))) == thisNode)
+				return (replicationFactor - k);
+		}
+		return -1;
+	}
+	
+	public static int inPredReReplicationSeg(long thisNode, long failedNode) throws NoSuchAlgorithmException
+	{
+		int k = replicationFactor;
+		while(k-- > 0) {
+			if((failedNode=computeHash(getPredecessorNode(failedNode))) == thisNode)
+				return (replicationFactor - k);
+		}
+		return -1;
 	}
 }
