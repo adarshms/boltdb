@@ -8,6 +8,7 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
+import java.security.NoSuchAlgorithmException;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -58,6 +59,22 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 		Naming.rebind ("KVStore", new BoltDBServer());
 	}
 	
+	private String[] getTargetHosts(long key) throws NoSuchAlgorithmException {
+		String targetHost = null;
+		String[] targetHosts = new String[GroupMembership.replicationFactor];
+		targetHost = GroupMembership.getSuccessorNode(GroupMembership.computeHash((new Long(key).toString())));
+		if(targetHost != null) {
+			targetHosts[0] = targetHost;
+		} else {
+			log.error("Target host is null");
+			return null;
+		}
+		
+		for(int i = 1; i < GroupMembership.replicationFactor; i++) {
+			targetHosts[i] = GroupMembership.getSuccessorNode(GroupMembership.membershipList.get(targetHosts[i-1]).hashValue);
+		}
+		return targetHosts;
+	}
 	/**
 	 * The insert api is used to insert a key and a value into the store.
 	 *'canBeForwarded' is a flag to indicate whether the request can be forwarded to
@@ -67,6 +84,7 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 	 * @param value
 	 * @param canBeForwarded
 	 * @throws RemoteException
+	 * @throws  
 	 */
 
 	public void insert(long key, String value, boolean canBeForwarded) throws RemoteException {
@@ -76,17 +94,22 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 			KVStore.put(key, value);
 			return;
 		}
-		String targetHost = null;
+		
 		try {
 			// Determine the target host using the getSuccessorNodeOf method
-			targetHost = GroupMembership.getSuccessorNodeOf(GroupMembership.computeHash((new Long(key).toString())));
-			if(targetHost.equals(InetAddress.getLocalHost().getHostName())) {
-				if(KVStore.containsKey(key))
-					throw new RemoteException("Key already present.");
-				KVStore.put(key, value);
-			} else {
-				BoltDBProtocol targetServer = (BoltDBProtocol) Naming.lookup("rmi://" + targetHost + "/KVStore");
-				targetServer.insert(key, value, false);
+			
+			String[] targetHosts = getTargetHosts(key);
+
+			for (int i = 0; i < GroupMembership.replicationFactor; i++) {
+				if (GroupMembership.membershipList.get(targetHosts[i]).hostname.equals(InetAddress.getLocalHost().getHostName())) {
+					if (KVStore.containsKey(key))
+						throw new RemoteException("Key already present.");
+					KVStore.put(key, value);
+				} else {
+					BoltDBProtocol targetServer = (BoltDBProtocol) Naming
+							.lookup("rmi://" + targetHosts[i] + "/KVStore");
+					targetServer.insert(key, value, false);
+				}
 			}
 		} catch(RemoteException re) {
 			throw re;
@@ -113,7 +136,7 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 		String targetHost = null;
 		try {
 			// Determine the target host using the getSuccessorNodeOf method
-			targetHost = GroupMembership.getSuccessorNodeOf(GroupMembership.computeHash((new Long(key).toString())));
+			targetHost = GroupMembership.getSuccessorNode(GroupMembership.computeHash((new Long(key).toString())));
 			if(targetHost.equals(InetAddress.getLocalHost().getHostName())) {
 				if(!KVStore.containsKey(key))
 					throw new RemoteException("Key not present.");
@@ -148,7 +171,7 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 		String targetHost = null;
 		try {
 			// Determine the target host using the getSuccessorNodeOf method
-			targetHost = GroupMembership.getSuccessorNodeOf(GroupMembership.computeHash((new Long(key).toString())));
+			targetHost = GroupMembership.getSuccessorNode(GroupMembership.computeHash((new Long(key).toString())));
 			if(targetHost.equals(InetAddress.getLocalHost().getHostName())) {
 				if(!KVStore.containsKey(key))
 					throw new RemoteException("Key not present.");
@@ -182,7 +205,7 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 		String targetHost = null;
 		try {
 			// Determine the target host using the getSuccessorNodeOf method
-			targetHost = GroupMembership.getSuccessorNodeOf(GroupMembership.computeHash((new Long(key).toString())));
+			targetHost = GroupMembership.getSuccessorNode(GroupMembership.computeHash((new Long(key).toString())));
 			if(targetHost.equals(InetAddress.getLocalHost().getHostName())) {
 				if(!KVStore.containsKey(key))
 					throw new RemoteException("Key not present.");
