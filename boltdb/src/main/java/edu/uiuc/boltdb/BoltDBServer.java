@@ -2,11 +2,18 @@ package edu.uiuc.boltdb;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.MalformedURLException;
 import java.rmi.Naming;
+import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
+import java.security.NoSuchAlgorithmException;
+import java.util.Collections;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.log4j.Logger;
@@ -37,7 +44,7 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 	/**
 	 * @param args
 	 */
-	public static Map<Long,String> KVStore = new ConcurrentHashMap<Long,String>();
+	public static SortedMap<Long,String> KVStore = Collections.synchronizedSortedMap(new TreeMap<Long,String>());
 
 
 	public static void main(String[] args) throws IOException {
@@ -52,6 +59,22 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 		Naming.rebind ("KVStore", new BoltDBServer());
 	}
 	
+	private String[] getTargetHosts(long key) throws NoSuchAlgorithmException {
+		String targetHost = null;
+		String[] targetHosts = new String[GroupMembership.replicationFactor];
+		targetHost = GroupMembership.getSuccessorNode(GroupMembership.computeHash((new Long(key).toString())));
+		if(targetHost != null) {
+			targetHosts[0] = targetHost;
+		} else {
+			log.error("Target host is null");
+			return null;
+		}
+		
+		for(int i = 1; i < GroupMembership.replicationFactor; i++) {
+			targetHosts[i] = GroupMembership.getSuccessorNode(GroupMembership.membershipList.get(targetHosts[i-1]).hashValue);
+		}
+		return targetHosts;
+	}
 	/**
 	 * The insert api is used to insert a key and a value into the store.
 	 *'canBeForwarded' is a flag to indicate whether the request can be forwarded to
@@ -61,6 +84,7 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 	 * @param value
 	 * @param canBeForwarded
 	 * @throws RemoteException
+	 * @throws  
 	 */
 
 	public void insert(long key, String value, boolean canBeForwarded) throws RemoteException {
@@ -70,17 +94,22 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 			KVStore.put(key, value);
 			return;
 		}
-		String targetHost = null;
+		
 		try {
 			// Determine the target host using the getSuccessorNodeOf method
-			targetHost = GroupMembership.membershipList.get(GroupMembership.getSuccessorNode(GroupMembership.computeHash((new Long(key).toString())))).hostname;
-			if(targetHost.equals(InetAddress.getLocalHost().getHostName())) {
-				if(KVStore.containsKey(key))
-					throw new RemoteException("Key already present.");
-				KVStore.put(key, value);
-			} else {
-				BoltDBProtocol targetServer = (BoltDBProtocol) Naming.lookup("rmi://" + targetHost + "/KVStore");
-				targetServer.insert(key, value, false);
+			
+			String[] targetHosts = getTargetHosts(key);
+
+			for (int i = 0; i < GroupMembership.replicationFactor; i++) {
+				if (GroupMembership.membershipList.get(targetHosts[i]).hostname.equals(InetAddress.getLocalHost().getHostName())) {
+					if (KVStore.containsKey(key))
+						throw new RemoteException("Key already present.");
+					KVStore.put(key, value);
+				} else {
+					BoltDBProtocol targetServer = (BoltDBProtocol) Naming
+							.lookup("rmi://" + targetHosts[i] + "/KVStore");
+					targetServer.insert(key, value, false);
+				}
 			}
 		} catch(RemoteException re) {
 			throw re;
@@ -191,5 +220,20 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 			log.error("ERROR" , e);
 			throw new RemoteException("Error occured at Server");
 		}		
+	}
+
+	public void lookupAndInsertInto(String hostname, long startKeyRange,
+			long endKeyRange) throws  RemoteException {
+		BoltDBProtocol targetServer = null;
+		try {
+			targetServer = (BoltDBProtocol) Naming.lookup("rmi://" + hostname + "/KVStore");
+		} catch (Exception e) {
+			log.error(e.getMessage());
+		}
+		SortedMap<Long,String> submap = KVStore.subMap(startKeyRange, endKeyRange);
+		
+		for(Entry<Long,String> e : submap.entrySet()) {
+			targetServer.insert(e.getKey(), e.getValue(), false);
+		}
 	}
 }

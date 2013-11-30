@@ -1,5 +1,8 @@
 package edu.uiuc.boltdb.groupmembership;
 
+import java.net.MalformedURLException;
+import java.rmi.NotBoundException;
+import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.Map;
@@ -44,6 +47,12 @@ public class RefreshMembershipListThread implements Runnable
 			//Remove entry which is marked toBeDeleted
 			if (membershipBean.toBeDeleted) 
 			{
+				try {
+					GroupMembership.handleCrash(membershipBean.hashValue);
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 				GroupMembership.membershipList.remove(entry.getKey());
 			} 
 			//If the membership list entry has timed-out then mark it toBeDeleted

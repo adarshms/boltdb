@@ -6,9 +6,12 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.math.BigInteger;
 import java.net.InetAddress;
+import java.net.MalformedURLException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.rmi.Naming;
+import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
@@ -391,6 +394,45 @@ public class GroupMembership implements Runnable {
 		return successorNode;
 	}
 	
+	
+	public static void handleCrash(long hashCrashedNode)
+			throws NoSuchAlgorithmException, MalformedURLException,
+			NotBoundException {
+		//TODO doesnt work for k=1,2;
+		long myhash = GroupMembership.membershipList.get(GroupMembership.pid).hashValue;
+		if (inSuccReReplicationSeg(hashCrashedNode, myhash) != -1) {
+			String predecessorCrashedNode = getKthPredecessorNode(
+					hashCrashedNode, 1);
+			long startKeyCrashedNode = GroupMembership.membershipList
+					.get(predecessorCrashedNode).hashValue + 1;
+			long endKeyCrashedNode = hashCrashedNode;
+			int i = 0;
+			while (i < replicationFactor) {
+				i++;
+				String myPredecessor = GroupMembership.membershipList
+						.get(getKthPredecessorNode(
+								GroupMembership.membershipList
+										.get(GroupMembership.pid).hashValue, i)).hostname;
+
+				BoltDBProtocol successorRMIServer;
+
+				try {
+					successorRMIServer = (BoltDBProtocol) Naming
+							.lookup("rmi://" + myPredecessor + "/KVStore");
+					successorRMIServer.lookupAndInsertInto(
+							GroupMembership.membershipList
+									.get(GroupMembership.pid).hostname,
+							startKeyCrashedNode, endKeyCrashedNode);
+					break;
+				} catch (RemoteException e) {
+					continue;
+				}
+			}
+		}
+	}
+	
+
+
 	public static String getKthPredecessorNode(long aNode, int k) throws NoSuchAlgorithmException
 	{
 		String predecessorNode = new String();
