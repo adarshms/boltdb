@@ -206,8 +206,8 @@ public class GroupMembership implements Runnable {
 					scheduler.awaitTermination(100, TimeUnit.MILLISECONDS);
 					//Move your keys to successor
 					long myHash = GroupMembership.membershipList.get(GroupMembership.pid).hashValue;
-					String successor = getSuccessorNode(myHash);
-					BoltDBProtocol successorRMIServer = (BoltDBProtocol) Naming.lookup("rmi://" + successor + "/KVStore");
+					String successorHost = GroupMembership.membershipList.get(getSuccessorNode(myHash)).hostname;
+					BoltDBProtocol successorRMIServer = (BoltDBProtocol) Naming.lookup("rmi://" + successorHost + "/KVStore");
 					Iterator<Entry<Long,String>> itr = BoltDBServer.KVStore.entrySet().iterator();
 					
 					while(itr.hasNext()) {
@@ -286,7 +286,8 @@ public class GroupMembership implements Runnable {
 					else if(checkCommand.equals("pred"))
 					{
 						long thisNode = Long.parseLong(stk.nextToken());
-						System.out.println("Predecessor of " + thisNode + " --> " + computeHash(getPredecessorNode(thisNode)));
+						int k = Integer.parseInt(stk.nextToken());
+						System.out.println("Predecessor of " + thisNode + " --> " + computeHash(getKthPredecessorNode(thisNode, k)));
 					}
 				}
 			}
@@ -393,9 +394,6 @@ public class GroupMembership implements Runnable {
 		return successorNode;
 	}
 	
-	public static String getKthPredecessorNode(long aNode, int k) throws NoSuchAlgorithmException {
-		return null;
-	}
 	
 	public static void handleCrash(long hashCrashedNode)
 			throws NoSuchAlgorithmException, MalformedURLException,
@@ -433,5 +431,16 @@ public class GroupMembership implements Runnable {
 		}
 	}
 	
-}
 
+
+	public static String getKthPredecessorNode(long aNode, int k) throws NoSuchAlgorithmException
+	{
+		String predecessorNode = new String();
+		while(k-- > 0)
+		{
+			predecessorNode = getPredecessorNode(aNode);
+			aNode = computeHash(predecessorNode);
+		}
+		return predecessorNode;
+	}
+}

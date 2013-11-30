@@ -136,7 +136,7 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 		String targetHost = null;
 		try {
 			// Determine the target host using the getSuccessorNodeOf method
-			targetHost = GroupMembership.getSuccessorNode(GroupMembership.computeHash((new Long(key).toString())));
+			targetHost = GroupMembership.membershipList.get(GroupMembership.getSuccessorNode(GroupMembership.computeHash((new Long(key).toString())))).hostname;
 			if(targetHost.equals(InetAddress.getLocalHost().getHostName())) {
 				if(!KVStore.containsKey(key))
 					throw new RemoteException("Key not present.");
@@ -171,7 +171,7 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 		String targetHost = null;
 		try {
 			// Determine the target host using the getSuccessorNodeOf method
-			targetHost = GroupMembership.getSuccessorNode(GroupMembership.computeHash((new Long(key).toString())));
+			targetHost = GroupMembership.membershipList.get(GroupMembership.getSuccessorNode(GroupMembership.computeHash((new Long(key).toString())))).hostname;
 			if(targetHost.equals(InetAddress.getLocalHost().getHostName())) {
 				if(!KVStore.containsKey(key))
 					throw new RemoteException("Key not present.");
@@ -205,7 +205,7 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 		String targetHost = null;
 		try {
 			// Determine the target host using the getSuccessorNodeOf method
-			targetHost = GroupMembership.getSuccessorNode(GroupMembership.computeHash((new Long(key).toString())));
+			targetHost = GroupMembership.membershipList.get(GroupMembership.getSuccessorNode(GroupMembership.computeHash((new Long(key).toString())))).hostname;
 			if(targetHost.equals(InetAddress.getLocalHost().getHostName())) {
 				if(!KVStore.containsKey(key))
 					throw new RemoteException("Key not present.");
