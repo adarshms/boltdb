@@ -143,10 +143,14 @@ public class MergeThread implements Runnable
 					log.info("JOINED - - - " + receivedPid);
 					//Get the successor of newly joined node
 					boolean amISuccessor = amITheSuccesorOf(receivedPid);
-					
 					if(amISuccessor) {
 						//If you are the successor,move keys accordingly. 
-						moveKeys(receivedHost,mBean.hashValue);
+						moveKeysSucc(receivedHost,mBean.hashValue);
+					}
+					
+					int amIInPredReReplicationSeg = GroupMembership.inPredReReplicationSeg(GroupMembership.computeHash(GroupMembership.pid), GroupMembership.computeHash(receivedPid));
+					if(amIInPredReReplicationSeg != -1) {
+						moveKeysPred(receivedHost, mBean.hashValue, amIInPredReReplicationSeg);
 					}
 				}
 			}
@@ -174,15 +178,51 @@ public class MergeThread implements Runnable
 	 * @throws NotBoundException
 	 * @throws NoSuchAlgorithmException
 	 */
-	private void moveKeys(String targetHost, long hashOfNewJoinedNode) throws MalformedURLException, RemoteException, NotBoundException, NoSuchAlgorithmException {
+	private void moveKeysSucc(String targetHost, long hashOfNewJoinedNode) throws MalformedURLException, RemoteException, NotBoundException, NoSuchAlgorithmException {
 		//get the rmiserver handle from the rmi registry
 		BoltDBProtocol targetRMIServer = (BoltDBProtocol) Naming.lookup("rmi://" + targetHost + "/KVStore");
 		Iterator<Entry<Long,String>> itr = BoltDBServer.KVStore.entrySet().iterator();
 		long myHash = GroupMembership.membershipList.get(GroupMembership.pid).hashValue;
 		
 		// Get the rmiserver handle for successor's successor from the rmi registry
-		String succSuccessorHost = GroupMembership.membershipList.get(GroupMembership.getKthSuccessorNode(hashOfNewJoinedNode, 2)).hostname;
+		String succSuccessorHost = GroupMembership.membershipList.get(GroupMembership.getKthSuccessorNode(myHash, 2)).hostname;
 		BoltDBProtocol succSuccRMIServer = (BoltDBProtocol) Naming.lookup("rmi://" + succSuccessorHost + "/KVStore");
+		while(itr.hasNext()) {
+			Entry<Long,String> entry = itr.next();
+			long hashOfKey = GroupMembership.computeHash(entry.getKey().toString());
+			//If hash of current server is greater than hash of newly joined server
+			//then move all the keys greater than hash of current server
+			//and less than newly joined server.
+			if (myHash > hashOfNewJoinedNode) {
+				if ( hashOfKey > myHash || hashOfKey <= hashOfNewJoinedNode) {
+					targetRMIServer.insert(entry.getKey(), entry.getValue(),false);
+					//BoltDBServer.KVStore.remove(entry.getKey());
+					// Delete this key in successor's successor
+					succSuccRMIServer.delete(entry.getKey(), false);
+				} 
+			}
+			//If hash of current server is less than hash of newly joined server
+			//then move all the keys in between the two servers hashes.
+			else {
+				if ( hashOfKey > myHash && hashOfKey <= hashOfNewJoinedNode) {
+					targetRMIServer.insert(entry.getKey(), entry.getValue(),false);
+					//BoltDBServer.KVStore.remove(entry.getKey());
+					// Delete this key in successor's successor
+					succSuccRMIServer.delete(entry.getKey(), false);
+				} 
+			}			
+		}
+	}
+	
+	private void moveKeysPred(String targetHost, long hashOfNewJoinedNode, int amIInPredReReplicationSeg) throws MalformedURLException, RemoteException, NotBoundException, NoSuchAlgorithmException {
+		//get the rmiserver handle from the rmi registry
+		BoltDBProtocol targetRMIServer = (BoltDBProtocol) Naming.lookup("rmi://" + targetHost + "/KVStore");
+		Iterator<Entry<Long,String>> itr = BoltDBServer.KVStore.entrySet().iterator();
+		long myHash = GroupMembership.membershipList.get(GroupMembership.pid).hashValue;
+		
+		// Get the rmiserver handle for (k-p)th successor from the rmi registry
+		String kpthSuccHost = GroupMembership.membershipList.get(GroupMembership.getKthSuccessorNode(myHash, (GroupMembership.replicationFactor - amIInPredReReplicationSeg))).hostname;
+		BoltDBProtocol succSuccRMIServer = (BoltDBProtocol) Naming.lookup("rmi://" + kpthSuccHost + "/KVStore");
 		while(itr.hasNext()) {
 			Entry<Long,String> entry = itr.next();
 			long hashOfKey = GroupMembership.computeHash(entry.getKey().toString());
