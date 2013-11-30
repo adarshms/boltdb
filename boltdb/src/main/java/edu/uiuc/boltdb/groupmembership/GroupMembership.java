@@ -283,7 +283,8 @@ public class GroupMembership implements Runnable {
 					else if(checkCommand.equals("pred"))
 					{
 						long thisNode = Long.parseLong(stk.nextToken());
-						System.out.println("Predecessor of " + thisNode + " --> " + computeHash(getPredecessorNode(thisNode)));
+						int k = Integer.parseInt(stk.nextToken());
+						System.out.println("Predecessor of " + thisNode + " --> " + computeHash(getKthPredecessorNode(thisNode, k)));
 					}
 				}
 			}
@@ -388,5 +389,16 @@ public class GroupMembership implements Runnable {
 			aNode = computeHash(successorNode);
 		}
 		return successorNode;
+	}
+	
+	public static String getKthPredecessorNode(long aNode, int k) throws NoSuchAlgorithmException
+	{
+		String predecessorNode = new String();
+		while(k-- > 0)
+		{
+			predecessorNode = getPredecessorNode(aNode);
+			aNode = computeHash(predecessorNode);
+		}
+		return predecessorNode;
 	}
 }
