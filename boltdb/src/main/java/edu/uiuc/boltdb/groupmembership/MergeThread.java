@@ -148,9 +148,11 @@ public class MergeThread implements Runnable
 						moveKeysSucc(receivedHost,mBean.hashValue);
 					}
 					
-					int amIInPredReReplicationSeg = GroupMembership.inPredReReplicationSeg(GroupMembership.computeHash(GroupMembership.pid), GroupMembership.computeHash(receivedPid));
-					if(amIInPredReReplicationSeg != -1) {
-						moveKeysPred(receivedHost, mBean.hashValue, amIInPredReReplicationSeg);
+					if(GroupMembership.membershipList.size() >= 3) {
+						int amIInPredReReplicationSeg = GroupMembership.inPredReReplicationSeg(GroupMembership.computeHash(GroupMembership.pid), GroupMembership.computeHash(receivedPid));
+						if(amIInPredReReplicationSeg != -1) {
+							moveKeysPred(receivedHost, mBean.hashValue, amIInPredReReplicationSeg);
+						}
 					}
 				}
 			}
@@ -198,7 +200,8 @@ public class MergeThread implements Runnable
 					targetRMIServer.insert(entry.getKey(), entry.getValue(),false);
 					//BoltDBServer.KVStore.remove(entry.getKey());
 					// Delete this key in successor's successor
-					succSuccRMIServer.delete(entry.getKey(), false);
+					if(GroupMembership.membershipList.size() >= 3)
+						succSuccRMIServer.delete(entry.getKey(), false);
 				} 
 			}
 			//If hash of current server is less than hash of newly joined server
@@ -208,7 +211,8 @@ public class MergeThread implements Runnable
 					targetRMIServer.insert(entry.getKey(), entry.getValue(),false);
 					//BoltDBServer.KVStore.remove(entry.getKey());
 					// Delete this key in successor's successor
-					succSuccRMIServer.delete(entry.getKey(), false);
+					if(GroupMembership.membershipList.size() >= 3)
+						succSuccRMIServer.delete(entry.getKey(), false);
 				} 
 			}			
 		}
@@ -217,36 +221,21 @@ public class MergeThread implements Runnable
 	private void moveKeysPred(String targetHost, long hashOfNewJoinedNode, int amIInPredReReplicationSeg) throws MalformedURLException, RemoteException, NotBoundException, NoSuchAlgorithmException {
 		//get the rmiserver handle from the rmi registry
 		BoltDBProtocol targetRMIServer = (BoltDBProtocol) Naming.lookup("rmi://" + targetHost + "/KVStore");
-		Iterator<Entry<Long,String>> itr = BoltDBServer.KVStore.entrySet().iterator();
 		long myHash = GroupMembership.membershipList.get(GroupMembership.pid).hashValue;
 		
 		// Get the rmiserver handle for (k-p)th successor from the rmi registry
-		String kpthSuccHost = GroupMembership.membershipList.get(GroupMembership.getKthSuccessorNode(myHash, (GroupMembership.replicationFactor - amIInPredReReplicationSeg))).hostname;
-		BoltDBProtocol succSuccRMIServer = (BoltDBProtocol) Naming.lookup("rmi://" + kpthSuccHost + "/KVStore");
+		String kpthSuccHost = GroupMembership.membershipList.get(GroupMembership.getKthSuccessorNode(hashOfNewJoinedNode, (GroupMembership.replicationFactor - amIInPredReReplicationSeg))).hostname;
+		BoltDBProtocol kpthSuccRMIServer = (BoltDBProtocol) Naming.lookup("rmi://" + kpthSuccHost + "/KVStore");
+
+		long myPredecessor = GroupMembership.computeHash(GroupMembership.getPredecessorNode(myHash));
+		Iterator<Entry<Long,String>> itr = BoltDBServer.KVStore.entrySet().iterator();
 		while(itr.hasNext()) {
 			Entry<Long,String> entry = itr.next();
 			long hashOfKey = GroupMembership.computeHash(entry.getKey().toString());
-			//If hash of current server is greater than hash of newly joined server
-			//then move all the keys greater than hash of current server
-			//and less than newly joined server.
-			if (myHash > hashOfNewJoinedNode) {
-				if ( hashOfKey > myHash || hashOfKey <= hashOfNewJoinedNode) {
-					targetRMIServer.insert(entry.getKey(), entry.getValue(),false);
-					//BoltDBServer.KVStore.remove(entry.getKey());
-					// Delete this key in successor's successor
-					succSuccRMIServer.delete(entry.getKey(), false);
-				} 
-			}
-			//If hash of current server is less than hash of newly joined server
-			//then move all the keys in between the two servers hashes.
-			else {
-				if ( hashOfKey > myHash && hashOfKey <= hashOfNewJoinedNode) {
-					targetRMIServer.insert(entry.getKey(), entry.getValue(),false);
-					//BoltDBServer.KVStore.remove(entry.getKey());
-					// Delete this key in successor's successor
-					succSuccRMIServer.delete(entry.getKey(), false);
-				} 
-			}			
+			if ( hashOfKey > myPredecessor && hashOfKey <= myHash) {
+				targetRMIServer.insert(entry.getKey(), entry.getValue(),false);
+				kpthSuccRMIServer.delete(entry.getKey(), false);
+			} 
 		}
 	}
 }
