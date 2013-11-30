@@ -107,7 +107,7 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 					KVStore.put(key, value);
 				} else {
 					BoltDBProtocol targetServer = (BoltDBProtocol) Naming
-							.lookup("rmi://" + targetHosts[i] + "/KVStore");
+							.lookup("rmi://" + GroupMembership.membershipList.get(targetHosts[i]).hostname + "/KVStore");
 					targetServer.insert(key, value, false);
 				}
 			}

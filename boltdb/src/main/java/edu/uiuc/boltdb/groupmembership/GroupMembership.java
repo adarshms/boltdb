@@ -235,16 +235,32 @@ public class GroupMembership implements Runnable {
 					System.out.println("-------------------------------------------------");
 					for (Map.Entry<String, MembershipBean> entry : membershipList.entrySet())
 					{
-						System.out.println(entry);
+						System.out.println(entry.getValue().hostname + "     " + entry.getValue().hashValue);
 					}
 					System.out.println("-------------------------------------------------");
 					System.out.println();
 					System.out.println("-------------------------------------------------");
 					System.out.println("Key Value Store : ");
 					System.out.println("-------------------------------------------------");
+					long myHash = GroupMembership.membershipList.get(GroupMembership.pid).hashValue;
+					long myPredecessor = GroupMembership.membershipList.get(GroupMembership.getPredecessorNode(myHash)).hashValue;
 					for (Map.Entry<Long, String> entry : BoltDBServer.KVStore.entrySet())
 					{
-					    System.out.println(entry.getKey() + " ---> " + entry.getValue() + "   |   Hash Value of Key - " + computeHash((new Long(entry.getKey())).toString()));
+						long hashOfKey = computeHash((new Long(entry.getKey())).toString());
+					    System.out.print(entry.getKey() + " ---> " + entry.getValue() + "   |   Hash of Key - " + hashOfKey + "   ");
+					    if(myHash > myPredecessor) {
+					    	if(hashOfKey > myPredecessor && hashOfKey <= myHash)
+					    		System.out.println("Primary");
+					    	else
+						    	System.out.println("Replica");
+					    }
+					    else {
+					    	if(hashOfKey > myPredecessor || hashOfKey <= myHash)
+					    		System.out.println("Primary");
+					    	else
+						    	System.out.println("Replica");
+					    }
+					    
 					}
 					System.out.println("-------------------------------------------------");
 					System.out.println();
