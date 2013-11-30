@@ -285,4 +285,17 @@ public class GroupMembership implements Runnable {
 		}
 		return successorHost;
 	}
+	
+	public static void handleCrash(long hashCrashedNode) {
+		if(inSucReReplicationSegment(hashCrashedNode)) {
+			String predecessorCrashedNode = getKthPredecessor(hashCrashedNode,1);
+			long startKeyCrashedNode = GroupMembership.membershipList.get(predecessorCrashedNode).hashValue;
+			long endKeyCrashedNode = hashCrashedNode;
+			String myPredecessor = GroupMembership.membershipList.get(getKthPredecessor(GroupMembership.membershipList.get(GroupMembership.pid).hashValue,1)).hostname;
+			
+			BoltDBProtocol successorRMIServer = (BoltDBProtocol) Naming.lookup("rmi://" + myPredecessor + "/KVStore");
+			successorRMIServer.lookupAndInsertInto(GroupMembership.membershipList.get(GroupMembership.pid).hostname, startKeyCrashedNode, endKeyCrashedNode);
+		}
+	}
+	
 }

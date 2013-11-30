@@ -2,11 +2,17 @@ package edu.uiuc.boltdb;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.MalformedURLException;
 import java.rmi.Naming;
+import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.Collections;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.log4j.Logger;
@@ -37,7 +43,7 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 	/**
 	 * @param args
 	 */
-	public static Map<Long,String> KVStore = new ConcurrentHashMap<Long,String>();
+	public static SortedMap<Long,String> KVStore = Collections.synchronizedSortedMap(new TreeMap<Long,String>());
 
 
 	public static void main(String[] args) throws IOException {
@@ -191,5 +197,20 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 			log.error("ERROR" , e);
 			throw new RemoteException("Error occured at Server");
 		}		
+	}
+
+	public void lookupAndInsertInto(String hostname, long startKeyRange,
+			long endKeyRange) throws  RemoteException {
+		BoltDBProtocol targetServer = null;
+		try {
+			targetServer = (BoltDBProtocol) Naming.lookup("rmi://" + hostname + "/KVStore");
+		} catch (Exception e) {
+			log.error(e.getMessage());
+		}
+		SortedMap<Long,String> submap = KVStore.subMap(startKeyRange, endKeyRange);
+		
+		for(Entry<Long,String> e : submap.entrySet()) {
+			targetServer.insert(e.getKey(), e.getValue(), false);
+		}
 	}
 }

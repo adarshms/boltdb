@@ -50,5 +50,7 @@ public interface BoltDBProtocol extends Remote {
 	 * @throws RemoteException
 	 */
 	public void delete(long key, boolean canBeForwarded) throws RemoteException;
+	
+	public void lookupAndInsertInto(String hostname, long startKeyRange, long endKeyRange) throws RemoteException;
 
 }

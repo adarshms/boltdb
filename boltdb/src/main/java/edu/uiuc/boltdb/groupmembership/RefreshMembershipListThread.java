@@ -53,6 +53,7 @@ public class RefreshMembershipListThread implements Runnable
 				if (membershipBean.hearbeatLastReceived > 0) {
 					System.out.println("CRASHED : " + entry.getKey() +" at " + new Date().toString());
 					log.info("CRASHED - - - " + entry.getKey());
+					GroupMembership.handleCrash(membershipBean.hashValue);
 				}
 			}
 		
