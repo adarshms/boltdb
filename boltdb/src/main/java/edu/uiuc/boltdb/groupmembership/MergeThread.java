@@ -127,7 +127,7 @@ public class MergeThread implements Runnable
                                 System.out.println("JOINED : " + receivedPid);
                                 currentMBean.toBeDeleted = false;
                         }
-                        GroupMembership.membershipList.put(receivedPid, currentMBean);
+                        GroupMembership.membershipList.put(receivedPid, currentMBean); 
                 }
 			}
 			else if(!GroupMembership.membershipList.containsKey(receivedPid) && receivedMBean.hearbeatLastReceived > 0) 
