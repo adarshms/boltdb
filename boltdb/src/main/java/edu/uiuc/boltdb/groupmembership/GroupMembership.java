@@ -416,7 +416,8 @@ public class GroupMembership implements Runnable {
 			NotBoundException {
 		//TODO doesnt work for k=1,2; && need to compute hash of keys before comparing at all places
 		long myhash = GroupMembership.membershipList.get(GroupMembership.pid).hashValue;
-		if (inSuccReReplicationSeg(hashCrashedNode, myhash) != -1) {
+		int successorPosition = inSuccReReplicationSeg(hashCrashedNode, myhash);
+		if (successorPosition != -1) {
 			String predecessorCrashedNode = getKthPredecessorNode(
 					hashCrashedNode, 1);
 			long startKeyCrashedNode = GroupMembership.membershipList
@@ -430,12 +431,12 @@ public class GroupMembership implements Runnable {
 								GroupMembership.membershipList
 										.get(GroupMembership.pid).hashValue, i)).hostname;
 
-				BoltDBProtocol successorRMIServer;
+				BoltDBProtocol predecessorRMIServer;
 
 				try {
-					successorRMIServer = (BoltDBProtocol) Naming
+					predecessorRMIServer = (BoltDBProtocol) Naming
 							.lookup("rmi://" + myPredecessor + "/KVStore");
-					successorRMIServer.lookupAndInsertInto(
+					predecessorRMIServer.lookupAndInsertInto(
 							GroupMembership.membershipList
 									.get(GroupMembership.pid).hostname,
 							startKeyCrashedNode, endKeyCrashedNode);

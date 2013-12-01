@@ -146,7 +146,7 @@ public class MergeThread implements Runnable
 				// Date()).toString());
 				log.info("JOINED - - - " + receivedPid);
 				// Get the successor of newly joined node
-				boolean amISuccessor = amITheSuccesorOf(receivedPid);
+				boolean amISuccessor = amITheSuccesorOf(receivedMBean.hashValue);
 				if (amISuccessor) {
 					// If you are the successor,move keys accordingly.
 					System.out.println("hey I'm the succ of newly joined node:"
@@ -178,8 +178,7 @@ public class MergeThread implements Runnable
 	 * @return
 	 * @throws UnknownHostException
 	 */
-	private boolean amITheSuccesorOf(String receivedPid) throws UnknownHostException {
-		long hashOfNewlyJoinedNode = GroupMembership.membershipList.get(receivedPid).hashValue;
+	private boolean amITheSuccesorOf(long hashOfNewlyJoinedNode) throws UnknownHostException {
 		if(GroupMembership.membershipList.get(GroupMembership.getSuccessorNode(hashOfNewlyJoinedNode)).hostname.equals(InetAddress.getLocalHost().getHostName())) return true;
 		return false;
 	}
