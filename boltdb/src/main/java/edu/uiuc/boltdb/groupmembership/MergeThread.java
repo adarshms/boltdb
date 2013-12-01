@@ -9,6 +9,7 @@ import java.rmi.Naming;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.security.NoSuchAlgorithmException;
+import java.security.acl.Group;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -134,28 +135,39 @@ public class MergeThread implements Runnable
 			{
 				//JOIN : If the incoming entry is not in our membership list then it means a new node has joined.
 				//if(receivedMBean.hearbeatLastReceived <= 0) continue;
-				String receivedHost = receivedPid.split(GroupMembership.pidDelimiter)[0];
-				MembershipBean mBean = new MembershipBean(receivedHost, receivedMBean.hearbeatLastReceived, System.currentTimeMillis(), receivedMBean.hashValue, false);
-				MembershipBean returnVal = GroupMembership.membershipList.putIfAbsent(receivedPid, mBean);
-				if (returnVal == null) 
-				{
-					//System.out.println("JOINED : " + receivedPid+" at "+(new Date()).toString());
-					log.info("JOINED - - - " + receivedPid);
-					//Get the successor of newly joined node
-					boolean amISuccessor = amITheSuccesorOf(receivedPid);
-					if(amISuccessor) {
-						//If you are the successor,move keys accordingly.
-						System.out.println("hey I'm the succ of newly joined node:"+receivedHost);
-						moveKeysSucc(receivedHost,mBean.hashValue);
-					}
-					else if(GroupMembership.membershipList.size() >= 3) {
-						int amIInPredReReplicationSeg = GroupMembership.inPredReReplicationSeg(GroupMembership.membershipList.get(GroupMembership.pid).hashValue, mBean.hashValue);
-						if(amIInPredReReplicationSeg != -1) {
-							System.out.println("hey I'm the "+amIInPredReReplicationSeg+" pred of newly joined node:"+receivedHost);
-							moveKeysPred(receivedHost, mBean.hashValue, amIInPredReReplicationSeg);
-						}
+				String receivedHost = receivedPid
+						.split(GroupMembership.pidDelimiter)[0];
+				MembershipBean mBean = new MembershipBean(receivedHost,
+						receivedMBean.hearbeatLastReceived,
+						System.currentTimeMillis(), receivedMBean.hashValue,
+						false);
+
+				// System.out.println("JOINED : " + receivedPid+" at "+(new
+				// Date()).toString());
+				log.info("JOINED - - - " + receivedPid);
+				// Get the successor of newly joined node
+				boolean amISuccessor = amITheSuccesorOf(receivedPid);
+				if (amISuccessor) {
+					// If you are the successor,move keys accordingly.
+					System.out.println("hey I'm the succ of newly joined node:"
+							+ receivedHost);
+					moveKeysSucc(receivedHost, mBean.hashValue);
+				} else if (GroupMembership.membershipList.size() >= 3) {
+					int amIInPredReReplicationSeg = GroupMembership
+							.inPredReReplicationSeg(
+									GroupMembership.membershipList
+											.get(GroupMembership.pid).hashValue,
+									mBean.hashValue);
+					if (amIInPredReReplicationSeg != -1) {
+						System.out.println("hey I'm the "
+								+ amIInPredReReplicationSeg
+								+ " pred of newly joined node:" + receivedHost);
+						moveKeysPred(receivedHost, mBean.hashValue,
+								amIInPredReReplicationSeg);
 					}
 				}
+				GroupMembership.membershipList.putIfAbsent(receivedPid, mBean);
+
 			}
 		}
 	}
@@ -190,41 +202,66 @@ public class MergeThread implements Runnable
 		// Get the rmiserver handle for successor's successor from the rmi registry
 		String succSuccessorHost = GroupMembership.membershipList.get(GroupMembership.getKthSuccessorNode(myHash, 2)).hostname;
 		BoltDBProtocol succSuccRMIServer = (BoltDBProtocol) Naming.lookup("rmi://" + succSuccessorHost + "/KVStore");
+		long predecessorHash = GroupMembership.membershipList.get(GroupMembership.getKthPredecessorNode(myHash, 1)).hashValue;
+		
 		while(itr.hasNext()) {
 			Entry<Long,String> entry = itr.next();
 			long hashOfKey = GroupMembership.computeHash(entry.getKey().toString());
-			//If hash of current server is greater than hash of newly joined server
-			//then move all the keys greater than hash of current server
-			//and less than newly joined server.
-			if (myHash > hashOfNewJoinedNode) {
-				if ( hashOfKey > myHash || hashOfKey <= hashOfNewJoinedNode) {
-					System.out.println("Inserting key :" + entry.getKey() + " value:"+entry.getValue() + " from Me to " + targetHost);
-					targetRMIServer.insert(entry.getKey(), entry.getValue(),false);
-					//BoltDBServer.KVStore.remove(entry.getKey());
-					// Delete this key in successor's successor
-					if(GroupMembership.membershipList.size() >= 3) {
-						System.out.println("Deleting key :" + entry.getKey() + " from " + succSuccessorHost);
-						succSuccRMIServer.delete(entry.getKey(), false);
+			if (predecessorHash == myHash
+					|| amIPrimaryReplicaFor(hashOfKey, myHash, predecessorHash)) {
+				// If hash of current server is greater than hash of newly
+				// joined server
+				// then move all the keys greater than hash of current server
+				// and less than newly joined server.
+				if (myHash > hashOfNewJoinedNode) {
+					if (hashOfKey > myHash || hashOfKey <= hashOfNewJoinedNode) {
+						System.out.println("Inserting key :" + entry.getKey()
+								+ " value:" + entry.getValue() + " from Me to "
+								+ targetHost);
+						targetRMIServer.insert(entry.getKey(),
+								entry.getValue(), false);
+						// BoltDBServer.KVStore.remove(entry.getKey());
+						// Delete this key in successor's successor
+						if (GroupMembership.membershipList.size() >= 3) {
+							System.out.println("Deleting key :"
+									+ entry.getKey() + " from "
+									+ succSuccessorHost);
+							succSuccRMIServer.delete(entry.getKey(), false);
+						}
 					}
-				} 
+				}
+				// If hash of current server is less than hash of newly joined
+				// server
+				// then move all the keys in between the two servers hashes.
+				else {
+					if (hashOfKey > myHash && hashOfKey <= hashOfNewJoinedNode) {
+						System.out.println("Inserting key :" + entry.getKey()
+								+ " value:" + entry.getValue() + " from Me to "
+								+ targetHost);
+						targetRMIServer.insert(entry.getKey(),
+								entry.getValue(), false);
+						// BoltDBServer.KVStore.remove(entry.getKey());
+						// Delete this key in successor's successor
+						if (GroupMembership.membershipList.size() >= 3) {
+							System.out.println("Deleting key :"
+									+ entry.getKey() + " from "
+									+ succSuccessorHost);
+							succSuccRMIServer.delete(entry.getKey(), false);
+						}
+					}
+				}
 			}
-			//If hash of current server is less than hash of newly joined server
-			//then move all the keys in between the two servers hashes.
-			else {
-				if ( hashOfKey > myHash && hashOfKey <= hashOfNewJoinedNode) {
-					System.out.println("Inserting key :" + entry.getKey() + " value:"+entry.getValue() + " from Me to " + targetHost);
-					targetRMIServer.insert(entry.getKey(), entry.getValue(),false);
-					//BoltDBServer.KVStore.remove(entry.getKey());
-					// Delete this key in successor's successor
-					if(GroupMembership.membershipList.size() >= 3) {
-						System.out.println("Deleting key :" + entry.getKey() + " from " + succSuccessorHost);
-						succSuccRMIServer.delete(entry.getKey(), false);
-					}
-				} 
-			}			
 		}
 	}
 	
+	private boolean amIPrimaryReplicaFor(long key,long myHash,long predecessorHash) {
+		if (myHash > predecessorHash) {
+			if (key > predecessorHash && key <= myHash) return true;
+		} else {
+			if (key > predecessorHash || key <= myHash) return true;
+		}
+		return false;
+	}
 	private void moveKeysPred(String targetHost, long hashOfNewJoinedNode, int predecessorPosition) throws MalformedURLException, RemoteException, NotBoundException, NoSuchAlgorithmException {
 		//get the rmiserver handle from the rmi registry
 		BoltDBProtocol targetRMIServer = (BoltDBProtocol) Naming.lookup("rmi://" + targetHost + "/KVStore");

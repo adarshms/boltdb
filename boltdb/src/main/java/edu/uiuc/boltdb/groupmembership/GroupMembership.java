@@ -414,7 +414,7 @@ public class GroupMembership implements Runnable {
 	public static void handleCrash(long hashCrashedNode)
 			throws NoSuchAlgorithmException, MalformedURLException,
 			NotBoundException {
-		//TODO doesnt work for k=1,2;
+		//TODO doesnt work for k=1,2; && need to compute hash of keys before comparing at all places
 		long myhash = GroupMembership.membershipList.get(GroupMembership.pid).hashValue;
 		if (inSuccReReplicationSeg(hashCrashedNode, myhash) != -1) {
 			String predecessorCrashedNode = getKthPredecessorNode(
