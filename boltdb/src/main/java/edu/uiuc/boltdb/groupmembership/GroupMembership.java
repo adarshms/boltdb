@@ -62,8 +62,9 @@ import edu.uiuc.boltdb.groupmembership.beans.*;
  */
 public class GroupMembership implements Runnable {
 	private static org.apache.log4j.Logger log = Logger.getRootLogger();
-	public static ConcurrentHashMap<String, MembershipBean> membershipList = new ConcurrentHashMap<String, MembershipBean>();
+	public static volatile ConcurrentHashMap<String, MembershipBean> membershipList = new ConcurrentHashMap<String, MembershipBean>();
 	public static String pid = new String();
+	public static long startTime;
 	public static String pidDelimiter = "--";
 	public static long bandwidth = 0;
 	public static int replicationFactor = 1;
@@ -112,6 +113,9 @@ public class GroupMembership implements Runnable {
 			
 			//Compute the hashvalue of yourself(server)
 			long hashValue = computeHash(pid);
+			
+			
+			startTime = System.currentTimeMillis();
 			
 			// Insert the current machine into the membership list with
 			// heartbeat=1. This single entry is going to be sent to the contact
@@ -395,7 +399,7 @@ public class GroupMembership implements Runnable {
 	public static int inPredReReplicationSeg(long thisNode, long failedNode) throws NoSuchAlgorithmException
 	{
 		int k = replicationFactor;
-		while(k-- > 0) {
+		while(k-- > 1) {
 			if((failedNode=computeHash(getPredecessorNode(failedNode))) == thisNode)
 				return (replicationFactor - k);
 		}

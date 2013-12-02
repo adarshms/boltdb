@@ -39,11 +39,12 @@ public class MergeThread implements Runnable
 	Map<String,UDPBean> incomingMembershipList = null;
 	String receivedJson = new String();
 	String sentHost;
-	
-	public  MergeThread(String sentHost, String json) 
+	Object lock;
+	public  MergeThread(String sentHost, String json, Object lock) 
 	{
 		this.sentHost = sentHost;
 		this.receivedJson = json;
+		this.lock = lock;
 	}
 	
 	public void run() 
@@ -58,7 +59,9 @@ public class MergeThread implements Runnable
 			return;
 		}
 		try {
-			mergeIncomingMembershipList();
+			synchronized (lock) {
+				mergeIncomingMembershipList();
+			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		} 
@@ -85,7 +88,7 @@ public class MergeThread implements Runnable
 	 * @throws MalformedURLException 
 	 * @throws NoSuchAlgorithmException 
 	 */
-	private synchronized void mergeIncomingMembershipList() throws UnknownHostException, MalformedURLException, RemoteException, NotBoundException, NoSuchAlgorithmException 
+	private void mergeIncomingMembershipList() throws UnknownHostException, MalformedURLException, RemoteException, NotBoundException, NoSuchAlgorithmException 
 	{
 		Iterator<Map.Entry<String, UDPBean>> iterator = incomingMembershipList.entrySet().iterator();
 		//Iterate over each entry of incoming membershiplist
@@ -146,7 +149,7 @@ public class MergeThread implements Runnable
 				// Date()).toString());
 				log.info("JOINED - - - " + receivedPid);
 				// Get the successor of newly joined node
-				if((System.currentTimeMillis() - GroupMembership.membershipList.get(GroupMembership.pid).timeStamp) > GroupMembership.tFail) {
+				if((System.currentTimeMillis() - GroupMembership.startTime) > (GroupMembership.tFail * 1000)) {
 					
 					boolean amISuccessor = amITheSuccesorOf(receivedMBean.hashValue);
 					if (amISuccessor) {
