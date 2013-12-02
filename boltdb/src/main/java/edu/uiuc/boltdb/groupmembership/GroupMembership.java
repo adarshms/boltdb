@@ -29,8 +29,7 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
 
-import edu.uiuc.boltdb.BoltDBProtocol;
-import edu.uiuc.boltdb.BoltDBServer;
+import edu.uiuc.boltdb.*;
 import edu.uiuc.boltdb.groupmembership.beans.*;
 
 /**
@@ -69,6 +68,7 @@ public class GroupMembership implements Runnable {
 	public static long bandwidth = 0;
 	public static int replicationFactor = 1;
 	private String[] args;
+	public static int tFail = 3;
 
 	public GroupMembership(String args[]) {
 		this.args = args;
@@ -157,7 +157,7 @@ public class GroupMembership implements Runnable {
 			}
 
 			// Get the tFail from property file
-			int tFail = Integer.parseInt(prop
+			tFail = Integer.parseInt(prop
 					.getProperty("groupmembership.tfail"));
 
 			// ScheduledExecutorService is used to schedule all the threads
@@ -321,6 +321,9 @@ public class GroupMembership implements Runnable {
 	 * @throws NoSuchAlgorithmException
 	 */
 	public static long computeHash(String pid) throws NoSuchAlgorithmException {
+		if(pid.length() <= 6 && !pid.isEmpty())
+			return Long.parseLong(pid);
+		
 		MessageDigest md = MessageDigest.getInstance("MD5");
 		BigInteger bigInt = new BigInteger(1, md.digest(pid.getBytes()));
 		return Math.abs(bigInt.longValue()) % 1000001L;
