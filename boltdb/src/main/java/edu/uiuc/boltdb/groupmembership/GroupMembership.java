@@ -411,18 +411,28 @@ public class GroupMembership implements Runnable {
 	}
 	
 	
-	public static void handleCrash(long hashCrashedNode)
+	/*public synchronized static void handleCrash(long hashCrashedNode)
 			throws NoSuchAlgorithmException, MalformedURLException,
 			NotBoundException {
 		//TODO doesnt work for k=1,2; && need to compute hash of keys before comparing at all places
 		long myhash = GroupMembership.membershipList.get(GroupMembership.pid).hashValue;
 		int successorPosition = inSuccReReplicationSeg(hashCrashedNode, myhash);
 		if (successorPosition != -1) {
-			String predecessorCrashedNode = getKthPredecessorNode(
-					hashCrashedNode, 1);
-			long startKeyCrashedNode = GroupMembership.membershipList
-					.get(predecessorCrashedNode).hashValue + 1;
-			long endKeyCrashedNode = hashCrashedNode;
+			long startKey, endKey;
+			
+			if(successorPosition == 3) {
+				String predecessorCrashedNode = getKthPredecessorNode(
+						hashCrashedNode, 1);
+				startKey = GroupMembership.membershipList
+						.get(predecessorCrashedNode).hashValue + 1;
+				endKey = hashCrashedNode;
+			} else {
+				String targetNode = getKthPredecessorNode(hashCrashedNode, replicationFactor - successorPosition);
+				//String predOfTargetNode = getP
+				startKey = GroupMembership.membershipList
+						.get(targetNode).hashValue + 1;
+			}
+				
 			int i = 0;
 			while (i < replicationFactor) {
 				i++;
@@ -439,14 +449,14 @@ public class GroupMembership implements Runnable {
 					predecessorRMIServer.lookupAndInsertInto(
 							GroupMembership.membershipList
 									.get(GroupMembership.pid).hostname,
-							startKeyCrashedNode, endKeyCrashedNode);
+							startKey, endKey);
 					break;
 				} catch (RemoteException e) {
 					continue;
 				}
 			}
 		}
-	}
+	}*/
 	
 
 
