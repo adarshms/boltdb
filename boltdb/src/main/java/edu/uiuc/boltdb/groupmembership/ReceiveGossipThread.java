@@ -12,10 +12,11 @@ public class ReceiveGossipThread implements Runnable
 {
 	private DatagramSocket serverSocket;
 	private int gossipPort = 8764;
-	
+	private Object lock;
 	public ReceiveGossipThread() throws IOException 
 	{
 		serverSocket = new DatagramSocket(gossipPort);
+		lock = new Object();
 	}
 	
 	public void run() 
@@ -38,7 +39,7 @@ public class ReceiveGossipThread implements Runnable
 			//System.out.println("Packet received:"+(receive.getLength() + 8));
 			String receivedJson = new String(receive.getData());
 			String sentHost = receive.getAddress().getHostName();
-			MergeThread mergeThread = new MergeThread(sentHost,receivedJson.trim());
+			MergeThread mergeThread = new MergeThread(sentHost,receivedJson.trim(),lock);
 			new Thread(mergeThread).start();			
 		}
 	}

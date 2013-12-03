@@ -39,11 +39,12 @@ public class MergeThread implements Runnable
 	Map<String,UDPBean> incomingMembershipList = null;
 	String receivedJson = new String();
 	String sentHost;
-	
-	public  MergeThread(String sentHost, String json) 
+	Object lock;
+	public  MergeThread(String sentHost, String json, Object lock) 
 	{
 		this.sentHost = sentHost;
 		this.receivedJson = json;
+		this.lock = lock;
 	}
 	
 	public void run() 
@@ -58,7 +59,9 @@ public class MergeThread implements Runnable
 			return;
 		}
 		try {
-			mergeIncomingMembershipList();
+			synchronized (lock) {
+				mergeIncomingMembershipList();
+			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		} 
@@ -146,24 +149,27 @@ public class MergeThread implements Runnable
 				// Date()).toString());
 				log.info("JOINED - - - " + receivedPid);
 				// Get the successor of newly joined node
-				boolean amISuccessor = amITheSuccesorOf(receivedMBean.hashValue);
-				if (amISuccessor) {
-					// If you are the successor,move keys accordingly.
-					System.out.println("hey I'm the succ of newly joined node:"
-							+ receivedHost);
-					moveKeysSucc(receivedHost, mBean.hashValue);
-				} else if (GroupMembership.membershipList.size() >= 3) {
-					int amIInPredReReplicationSeg = GroupMembership
-							.inPredReReplicationSeg(
-									GroupMembership.membershipList
-											.get(GroupMembership.pid).hashValue,
-									mBean.hashValue);
-					if (amIInPredReReplicationSeg != -1) {
-						System.out.println("hey I'm the "
-								+ amIInPredReReplicationSeg
-								+ " pred of newly joined node:" + receivedHost);
-						moveKeysPred(receivedHost, mBean.hashValue,
-								amIInPredReReplicationSeg);
+				if((System.currentTimeMillis() - GroupMembership.startTime) > (GroupMembership.tFail * 1000)) {
+					
+					boolean amISuccessor = amITheSuccesorOf(receivedMBean.hashValue);
+					if (amISuccessor) {
+						// If you are the successor,move keys accordingly.
+						System.out.println("hey I'm the succ of newly joined node:"
+								+ receivedHost);
+						moveKeysSucc(receivedHost, mBean.hashValue);
+					} else if (GroupMembership.membershipList.size() >= 3) {
+						int amIInPredReReplicationSeg = GroupMembership
+								.inPredReReplicationSeg(
+										GroupMembership.membershipList
+												.get(GroupMembership.pid).hashValue,
+										mBean.hashValue);
+						if (amIInPredReReplicationSeg != -1) {
+							System.out.println("hey I'm the "
+									+ amIInPredReReplicationSeg
+									+ " pred of newly joined node:" + receivedHost);
+							moveKeysPred(receivedHost, mBean.hashValue,
+									amIInPredReReplicationSeg);
+						}
 					}
 				}
 				GroupMembership.membershipList.putIfAbsent(receivedPid, mBean);
@@ -201,7 +207,9 @@ public class MergeThread implements Runnable
 		// Get the rmiserver handle for successor's successor from the rmi registry
 		String succSuccessorHost = GroupMembership.membershipList.get(GroupMembership.getKthSuccessorNode(myHash, 2)).hostname;
 		BoltDBProtocol succSuccRMIServer = (BoltDBProtocol) Naming.lookup("rmi://" + succSuccessorHost + "/KVStore");
-		long predecessorHash = GroupMembership.membershipList.get(GroupMembership.getKthPredecessorNode(myHash, 1)).hashValue;
+		long predecessorHash = myHash;
+		if(GroupMembership.membershipList.size() > 1)
+			predecessorHash = GroupMembership.membershipList.get(GroupMembership.getKthPredecessorNode(myHash, 1)).hashValue;
 		
 		while(itr.hasNext()) {
 			Entry<Long,String> entry = itr.next();

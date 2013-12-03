@@ -29,8 +29,7 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
 
-import edu.uiuc.boltdb.BoltDBProtocol;
-import edu.uiuc.boltdb.BoltDBServer;
+import edu.uiuc.boltdb.*;
 import edu.uiuc.boltdb.groupmembership.beans.*;
 
 /**
@@ -63,12 +62,14 @@ import edu.uiuc.boltdb.groupmembership.beans.*;
  */
 public class GroupMembership implements Runnable {
 	private static org.apache.log4j.Logger log = Logger.getRootLogger();
-	public static ConcurrentHashMap<String, MembershipBean> membershipList = new ConcurrentHashMap<String, MembershipBean>();
+	public static volatile ConcurrentHashMap<String, MembershipBean> membershipList = new ConcurrentHashMap<String, MembershipBean>();
 	public static String pid = new String();
+	public static long startTime;
 	public static String pidDelimiter = "--";
 	public static long bandwidth = 0;
 	public static int replicationFactor = 1;
 	private String[] args;
+	public static int tFail = 3;
 
 	public GroupMembership(String args[]) {
 		this.args = args;
@@ -112,6 +113,9 @@ public class GroupMembership implements Runnable {
 			
 			//Compute the hashvalue of yourself(server)
 			long hashValue = computeHash(pid);
+			
+			
+			startTime = System.currentTimeMillis();
 			
 			// Insert the current machine into the membership list with
 			// heartbeat=1. This single entry is going to be sent to the contact
@@ -157,7 +161,7 @@ public class GroupMembership implements Runnable {
 			}
 
 			// Get the tFail from property file
-			int tFail = Integer.parseInt(prop
+			tFail = Integer.parseInt(prop
 					.getProperty("groupmembership.tfail"));
 
 			// ScheduledExecutorService is used to schedule all the threads
@@ -321,6 +325,9 @@ public class GroupMembership implements Runnable {
 	 * @throws NoSuchAlgorithmException
 	 */
 	public static long computeHash(String pid) throws NoSuchAlgorithmException {
+		if(pid.length() <= 6 && !pid.isEmpty())
+			return Long.parseLong(pid);
+		
 		MessageDigest md = MessageDigest.getInstance("MD5");
 		BigInteger bigInt = new BigInteger(1, md.digest(pid.getBytes()));
 		return Math.abs(bigInt.longValue()) % 1000001L;
@@ -392,7 +399,7 @@ public class GroupMembership implements Runnable {
 	public static int inPredReReplicationSeg(long thisNode, long failedNode) throws NoSuchAlgorithmException
 	{
 		int k = replicationFactor;
-		while(k-- > 0) {
+		while(k-- > 1) {
 			if((failedNode=computeHash(getPredecessorNode(failedNode))) == thisNode)
 				return (replicationFactor - k);
 		}
