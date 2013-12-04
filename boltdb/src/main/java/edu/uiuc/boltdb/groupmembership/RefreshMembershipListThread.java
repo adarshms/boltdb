@@ -48,7 +48,7 @@ public class RefreshMembershipListThread implements Runnable
 			if (membershipBean.toBeDeleted) 
 			{
 				try {
-					//GroupMembership.handleCrash(membershipBean.hashValue);
+					GroupMembership.handleCrash(membershipBean.hashValue);
 				} catch (Exception e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();

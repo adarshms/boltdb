@@ -418,52 +418,54 @@ public class GroupMembership implements Runnable {
 	}
 	
 	
-	/*public synchronized static void handleCrash(long hashCrashedNode)
+	public synchronized static void handleCrash(long hashCrashedNode)
 			throws NoSuchAlgorithmException, MalformedURLException,
 			NotBoundException {
 		//TODO doesnt work for k=1,2; && need to compute hash of keys before comparing at all places
-		long myhash = GroupMembership.membershipList.get(GroupMembership.pid).hashValue;
-		int successorPosition = inSuccReReplicationSeg(hashCrashedNode, myhash);
+		if(membershipList.size() <= 3) return;
+		long myhash = membershipList.get(GroupMembership.pid).hashValue;
+		int successorPosition = inSuccReReplicationSeg(myhash,hashCrashedNode);
 		if (successorPosition != -1) {
+			System.out.println("successor position:"+successorPosition);
 			long startKey, endKey;
-			
+			String targetNode;
 			if(successorPosition == 3) {
-				String predecessorCrashedNode = getKthPredecessorNode(
-						hashCrashedNode, 1);
-				startKey = GroupMembership.membershipList
-						.get(predecessorCrashedNode).hashValue + 1;
+				startKey = membershipList.get(getPredecessorNode(hashCrashedNode)).hashValue + 1;
 				endKey = hashCrashedNode;
-			} else {
-				String targetNode = getKthPredecessorNode(hashCrashedNode, replicationFactor - successorPosition);
-				//String predOfTargetNode = getP
-				startKey = GroupMembership.membershipList
-						.get(targetNode).hashValue + 1;
+				targetNode = getSuccessorNode(hashCrashedNode);
 			}
-				
+			else {
+				targetNode = getKthPredecessorNode(hashCrashedNode, replicationFactor - successorPosition);
+				startKey = membershipList.get(getPredecessorNode(membershipList.get(targetNode).hashValue)).hashValue + 1;
+				endKey = membershipList.get(targetNode).hashValue;
+			}
+			
+			System.out.println("startkey:"+startKey+ " endKey:"+endKey+" targetNode:"+targetNode);
+			BoltDBProtocol targetRMIServer = null;
 			int i = 0;
-			while (i < replicationFactor) {
-				i++;
-				String myPredecessor = GroupMembership.membershipList
-						.get(getKthPredecessorNode(
-								GroupMembership.membershipList
-										.get(GroupMembership.pid).hashValue, i)).hostname;
-
-				BoltDBProtocol predecessorRMIServer;
-
+			System.out.println("membership list:"+ membershipList);
+			while (i++ < replicationFactor - 1) {
 				try {
-					predecessorRMIServer = (BoltDBProtocol) Naming
-							.lookup("rmi://" + myPredecessor + "/KVStore");
-					predecessorRMIServer.lookupAndInsertInto(
-							GroupMembership.membershipList
-									.get(GroupMembership.pid).hostname,
-							startKey, endKey);
+					System.out.println("trying to connect to targetNode pid :"+targetNode+" with hostname :"+ membershipList.get(targetNode).hostname );
+					targetRMIServer = (BoltDBProtocol) Naming.lookup("rmi://"
+							+ membershipList.get(targetNode).hostname + "/KVStore");
+					targetRMIServer.lookupAndInsertInto(membershipList.get(pid).hostname, startKey, endKey);
 					break;
-				} catch (RemoteException e) {
+				} catch (RemoteException e1) {
+					System.out.println("Exception while connecting to "+targetNode+ " "+e1.getMessage());
+					targetNode = getSuccessorNode(GroupMembership.membershipList
+							.get(targetNode).hashValue);
 					continue;
 				}
 			}
+			
+			if(targetRMIServer == null) {
+				System.out.println("Problem replicating keys during crash");
+				log.error("Problem replicating keys during crash");
+				return;
+			}
 		}
-	}*/
+	}
 	
 
 

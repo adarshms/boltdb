@@ -230,10 +230,28 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 		} catch (Exception e) {
 			log.error(e.getMessage());
 		}
-		SortedMap<Long,String> submap = KVStore.subMap(startKeyRange, endKeyRange);
-		
-		for(Entry<Long,String> e : submap.entrySet()) {
-			targetServer.insert(e.getKey(), e.getValue(), false);
+		System.out.println("lookupAndInsert: start - "+startKeyRange+" end - "+ endKeyRange);
+		for(Entry<Long,String> e : KVStore.entrySet()) {
+			try {
+				long hashOfKey = GroupMembership.computeHash(e.getKey().toString());
+				System.out.println("lookupAndInsert: hashOfkey - "+hashOfKey);
+				if (startKeyRange < endKeyRange) {
+					if (hashOfKey >= startKeyRange && hashOfKey <= endKeyRange) {
+						System.out.println("Inserting " + hashOfKey + " from "
+								+ GroupMembership.pid + " to " + hostname);
+						targetServer.insert(e.getKey(), e.getValue(), false);
+					}
+				} else {
+					if (hashOfKey >= startKeyRange || hashOfKey <= endKeyRange) {
+						System.out.println("Inserting " + hashOfKey + " from "
+								+ GroupMembership.pid + " to " + hostname);
+						targetServer.insert(e.getKey(), e.getValue(), false);
+					}
+				}
+			} catch (NoSuchAlgorithmException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
 		}
 	}
 }
