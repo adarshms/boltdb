@@ -10,11 +10,13 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
 import java.security.NoSuchAlgorithmException;
 import java.util.Collections;
+import java.util.Date;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.apache.log4j.Logger;
 
@@ -44,7 +46,7 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 	/**
 	 * @param args
 	 */
-	public static SortedMap<Long,String> KVStore = Collections.synchronizedSortedMap(new TreeMap<Long,String>());
+	public static ConcurrentMap<Long,String> KVStore = new ConcurrentHashMap<Long,String>();
 
 
 	public static void main(String[] args) throws IOException {
@@ -87,12 +89,13 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 	 * @throws  
 	 */
 
-	public void insert(long key, String value, boolean canBeForwarded) throws RemoteException {
+	public Boolean insert(long key, String value, boolean canBeForwarded) throws RemoteException {
 		if(!canBeForwarded) {
 			if(KVStore.containsKey(key))
-				throw new RemoteException("Key already present.");
+				//throw new RemoteException("Key already present.");
+				return false;
 			KVStore.put(key, value);
-			return;
+			return true;
 		}
 		
 		try {
@@ -103,14 +106,16 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 			for (int i = 0; i < GroupMembership.replicationFactor; i++) {
 				if (GroupMembership.membershipList.get(targetHosts[i]).hostname.equals(InetAddress.getLocalHost().getHostName())) {
 					if (KVStore.containsKey(key))
-						throw new RemoteException("Key already present.");
+						//throw new RemoteException("Key already present.");
+						return false;
 					KVStore.put(key, value);
 				} else {
 					BoltDBProtocol targetServer = (BoltDBProtocol) Naming
 							.lookup("rmi://" + GroupMembership.membershipList.get(targetHosts[i]).hostname + "/KVStore");
-					targetServer.insert(key, value, false);
+					if(!targetServer.insert(key, value, false)) return false;
 				}
 			}
+		return true;
 		} catch(RemoteException re) {
 			throw re;
 		} catch (Exception e) {
@@ -195,12 +200,13 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 	 * @param canBeForwarded
 	 * @throws RemoteException
 	 */
-	public void delete(long key, boolean canBeForwarded) throws RemoteException {
+	public Boolean delete(long key, boolean canBeForwarded) throws RemoteException {
 		if(!canBeForwarded) {
 			if(!KVStore.containsKey(key))
-				throw new RemoteException("Key not present.");
+				//throw new RemoteException("Key not present.");
+				return false;
 			KVStore.remove(key);
-			return;
+			return true;
 		}
 		String targetHost = null;
 		try {
@@ -208,11 +214,13 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 			targetHost = GroupMembership.membershipList.get(GroupMembership.getSuccessorNode(GroupMembership.computeHash((new Long(key).toString())))).hostname;
 			if(targetHost.equals(InetAddress.getLocalHost().getHostName())) {
 				if(!KVStore.containsKey(key))
-					throw new RemoteException("Key not present.");
+					//throw new RemoteException("Key not present.");
+					return false;
 				KVStore.remove(key);
+				return true;
 			} else {
 				BoltDBProtocol targetServer = (BoltDBProtocol) Naming.lookup("rmi://" + targetHost + "/KVStore");
-				targetServer.delete(key, false);
+				return targetServer.delete(key, false);
 			}
 		} catch(RemoteException re) {
 			throw re;
@@ -239,11 +247,15 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 					if (hashOfKey >= startKeyRange && hashOfKey <= endKeyRange) {
 						System.out.println("Inserting " + hashOfKey + " from "
 								+ GroupMembership.pid + " to " + hostname);
+						log.info("["+new Date()+"]Inserting " + hashOfKey + " from "
+								+ GroupMembership.pid + " to " + hostname);
 						targetServer.insert(e.getKey(), e.getValue(), false);
 					}
 				} else {
 					if (hashOfKey >= startKeyRange || hashOfKey <= endKeyRange) {
 						System.out.println("Inserting " + hashOfKey + " from "
+								+ GroupMembership.pid + " to " + hostname);
+						log.info("["+new Date()+"]Inserting " + hashOfKey + " from "
 								+ GroupMembership.pid + " to " + hostname);
 						targetServer.insert(e.getKey(), e.getValue(), false);
 					}

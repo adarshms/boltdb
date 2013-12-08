@@ -4,10 +4,12 @@ import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.math.BigInteger;
 import java.net.MalformedURLException;
 import java.rmi.Naming;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Properties;
 import java.util.StringTokenizer;
@@ -78,7 +80,7 @@ public class MovieSearchClient {
 		try {
 			StringTokenizer stk = new StringTokenizer(keyWordString);
 			String keyWord = stk.nextToken();
-			long key = GroupMembership.computeHash(keyWord);
+			long key = computeHash(keyWord);
 
 			String result = (String)boltDBServer.lookup(key, true);
 			
@@ -98,5 +100,11 @@ public class MovieSearchClient {
 			else
 				System.out.println(re.getCause().getMessage());
 		}
+	}
+	
+	public static long computeHash(String pid) throws NoSuchAlgorithmException {
+		MessageDigest md = MessageDigest.getInstance("MD5");
+		BigInteger bigInt = new BigInteger(1, md.digest(pid.getBytes()));
+		return Math.abs(bigInt.longValue()) % 1000001L;
 	}
 }

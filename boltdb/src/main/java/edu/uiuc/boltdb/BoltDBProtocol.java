@@ -20,7 +20,7 @@ public interface BoltDBProtocol extends Remote {
 	 * @param canBeForwarded
 	 * @throws RemoteException
 	 */
-	public void insert(long key, String value, boolean canBeForwarded) throws RemoteException;
+	public Boolean insert(long key, String value, boolean canBeForwarded) throws RemoteException;
 	
 	/**
 	 * The lookup api is used to lookup the value associated with a key.
@@ -49,7 +49,7 @@ public interface BoltDBProtocol extends Remote {
 	 * @param canBeForwarded
 	 * @throws RemoteException
 	 */
-	public void delete(long key, boolean canBeForwarded) throws RemoteException;
+	public Boolean delete(long key, boolean canBeForwarded) throws RemoteException;
 	
 	public void lookupAndInsertInto(String hostname, long startKeyRange, long endKeyRange) throws RemoteException;
 
