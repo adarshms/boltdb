@@ -111,7 +111,8 @@ public class BoltDBClient {
 				}
 				value = value.trim();
 				// Perform Insert Operation on the remote server object
-				boltDBServer.insert(key, new ValueTimeStamp(value, 0), true,consistencyLevel);
+				if(!boltDBServer.insert(key, new ValueTimeStamp(value, 0), true,consistencyLevel))
+					System.out.println("Key already present");
 			} else if(commandType.equals("update")) {
 				String clevel = stk.nextToken();
 				if (!clevel.equals("ONE") && !clevel.equals("QUORUM") && !clevel.equals("ALL")) {
@@ -134,7 +135,8 @@ public class BoltDBClient {
 				}
 				value = value.trim();
 				// Perform Update Operation on the remote server object
-				boltDBServer.update(key, new ValueTimeStamp(value, 0), true, consistencyLevel);
+				if(!boltDBServer.update(key, new ValueTimeStamp(value, 0), true, consistencyLevel))
+					System.out.println("Key not present");
 			} else if(commandType.equals("lookup")) {
 				String clevel = stk.nextToken();
 				if (!clevel.equals("ONE") && !clevel.equals("QUORUM") && !clevel.equals("ALL")) {
@@ -148,6 +150,10 @@ public class BoltDBClient {
 				if(key == -1) return;
 				// Perform LookUp Operation on the remote server object
 				ValueTimeStamp value = boltDBServer.lookup(key, true, consistencyLevel);
+				if(value == null) {
+					System.out.println("Key not present");
+					return;
+				}
 				System.out.println("Look Up Result : " + value.value);
 			} else if(commandType.equals("delete")) {
 				String clevel = stk.nextToken();
@@ -160,8 +166,10 @@ public class BoltDBClient {
 				long key = parseKey(keyStr);
 				if(key == -1) return;
 				// Perform Delete Operation on the remote server object
-				boltDBServer.delete(key, true, consistencyLevel);
-				System.out.println("Key Value Pair Deleted");
+				if(boltDBServer.delete(key, true, consistencyLevel))
+					System.out.println("Key Value Pair Deleted");
+				else
+					System.out.println("Delete Failed");
 			} else {
 				printUsage(0);
 				return;

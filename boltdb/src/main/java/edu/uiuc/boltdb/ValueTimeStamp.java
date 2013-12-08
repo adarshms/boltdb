@@ -17,4 +17,8 @@ public class ValueTimeStamp implements Serializable {
 		this.timeStamp = timeStamp;
 	}
 	
+	@Override
+	public String toString() {
+		return new String("[" + value + " " +timeStamp+ "]");
+	}
 }

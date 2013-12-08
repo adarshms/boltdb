@@ -29,7 +29,8 @@ public class LookupThread implements Callable<ValueTimeStamp> {
 			if (GroupMembership.membershipList.get(targetHost).hostname
 					.equals(InetAddress.getLocalHost().getHostName())) {
 				if(!BoltDBServer.KVStore.containsKey(key))
-					throw new RemoteException("Key not present.");
+					return null;
+					//throw new RemoteException("Key not present.");
 				return BoltDBServer.KVStore.get(key);
 			} else {
 				BoltDBProtocol targetServer = (BoltDBProtocol) Naming
@@ -39,7 +40,7 @@ public class LookupThread implements Callable<ValueTimeStamp> {
 				return targetServer.lookup(key, false, consistencyLevel);
 			}
 		} catch (Exception e) {
-			System.out.println("Exception in insert thread");
+			System.out.println("Exception in lookup thread");
 			return null;
 		}
 	}

@@ -31,19 +31,21 @@ public class UpdateThread implements Callable<Boolean> {
 		try {
 		if (GroupMembership.membershipList.get(targetHost).hostname.equals(InetAddress.getLocalHost().getHostName())) {
 			if(!BoltDBServer.KVStore.containsKey(key))
-				throw new RemoteException("Key not present.");
-			if(BoltDBServer.KVStore.get(key).timeStamp < value.timeStamp)
+				return false;
+				//throw new RemoteException("Key not present.");
+				
+			if(BoltDBServer.KVStore.get(key).timeStamp < value.timeStamp) 
 				BoltDBServer.KVStore.put(key, value);
+			return true;
 		} else {
 			BoltDBProtocol targetServer = (BoltDBProtocol) Naming
 					.lookup("rmi://" + GroupMembership.membershipList.get(targetHost).hostname + "/KVStore");
-			targetServer.update(key, value, false, consistencyLevel);
+			return targetServer.update(key, value, false, consistencyLevel);
 		}
 		} catch(Exception e) {
-			System.out.println("Exception in insert thread");
+			System.out.println("Exception in update thread");
 			return false;
 		}
-		return new Boolean(true);
 	}
 
 }
