@@ -3,12 +3,14 @@ package edu.uiuc.boltdb.methods;
 import java.net.InetAddress;
 import java.rmi.Naming;
 import java.rmi.RemoteException;
+import java.util.Date;
 import java.util.concurrent.Callable;
 
 import edu.uiuc.boltdb.BoltDBProtocol;
 import edu.uiuc.boltdb.BoltDBServer;
 import edu.uiuc.boltdb.BoltDBProtocol.CONSISTENCY_LEVEL;
 import edu.uiuc.boltdb.groupmembership.GroupMembership;
+import edu.uiuc.boltdb.groupmembership.beans.Operation;
 import edu.uiuc.boltdb.ValueTimeStamp;
 
 public class UpdateThread implements Callable<Boolean> {
@@ -36,6 +38,8 @@ public class UpdateThread implements Callable<Boolean> {
 				
 			if(BoltDBServer.KVStore.get(key).timeStamp < value.timeStamp) 
 				BoltDBServer.KVStore.put(key, value);
+			if(consistencyLevel != null)
+				BoltDBServer.writeBuffer.add(new Operation("UPDATE", consistencyLevel, new Date().toString(), key, value.value));
 			return true;
 		} else {
 			BoltDBProtocol targetServer = (BoltDBProtocol) Naming

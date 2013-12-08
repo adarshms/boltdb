@@ -1,20 +1,13 @@
 package edu.uiuc.boltdb;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.MalformedURLException;
 import java.rmi.Naming;
-import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
 import java.security.NoSuchAlgorithmException;
-import java.util.Collections;
 import java.util.Date;
-import java.util.Map;
 import java.util.Map.Entry;
-import java.util.SortedMap;
-import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
@@ -23,10 +16,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import org.apache.commons.collections.buffer.CircularFifoBuffer;
 import org.apache.log4j.Logger;
 
-import edu.uiuc.boltdb.BoltDBProtocol.CONSISTENCY_LEVEL;
 import edu.uiuc.boltdb.groupmembership.GroupMembership;
+import edu.uiuc.boltdb.groupmembership.beans.Operation;
 import edu.uiuc.boltdb.methods.DeleteThread;
 import edu.uiuc.boltdb.methods.InsertThread;
 import edu.uiuc.boltdb.methods.LookupThread;
@@ -48,6 +42,9 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 
 	private static final long serialVersionUID = 5195393553928167809L;
 	private static org.apache.log4j.Logger log = Logger.getRootLogger();
+	
+	public static CircularFifoBuffer readBuffer = new CircularFifoBuffer(10);
+	public static CircularFifoBuffer writeBuffer = new CircularFifoBuffer(10);
 	
 	protected BoltDBServer() throws RemoteException {
 		super();
@@ -155,6 +152,8 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 				//throw new RemoteException("Key already present.");
 				return false;
 			KVStore.put(key, value);
+			if(consistencyLevel != null)
+				writeBuffer.add(new Operation("INSERT", consistencyLevel, new Date().toString(), key, value.value));
 			return true;
 		}
 		
@@ -191,7 +190,9 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 		if(!canBeForwarded) {
 			if(!KVStore.containsKey(key))
 				throw new RemoteException("Key not present.");
-			return KVStore.get(key);
+			ValueTimeStamp value = KVStore.get(key);
+			readBuffer.add(new Operation("READ", consistencyLevel, new Date().toString(), key, value.value));
+			return value;
 		}
 
 		try {
@@ -227,6 +228,8 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 				throw new RemoteException("Key not present.");
 			if(KVStore.get(key).timeStamp < value.timeStamp)
 				KVStore.put(key, value);
+			if(consistencyLevel != null)
+				writeBuffer.add(new Operation("UPDATE", consistencyLevel, new Date().toString(), key, value.value));
 			return true;
 		}
 		value.timeStamp = System.currentTimeMillis();
@@ -262,6 +265,8 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 				//throw new RemoteException("Key not present.");
 				return false;
 			KVStore.remove(key);
+			if(consistencyLevel != null)
+				writeBuffer.add(new Operation("DELETE", consistencyLevel, new Date().toString(), key));
 			return true;
 		}
 

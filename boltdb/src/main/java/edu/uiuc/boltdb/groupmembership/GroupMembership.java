@@ -209,7 +209,7 @@ public class GroupMembership implements Runnable {
 					scheduler.shutdownNow();
 					scheduler.awaitTermination(100, TimeUnit.MILLISECONDS);
 					//Move your keys to successor
-					long myHash = GroupMembership.membershipList.get(GroupMembership.pid).hashValue;
+					/*long myHash = GroupMembership.membershipList.get(GroupMembership.pid).hashValue;
 					String successorHost = GroupMembership.membershipList.get(getSuccessorNode(myHash)).hostname;
 					BoltDBProtocol successorRMIServer = (BoltDBProtocol) Naming.lookup("rmi://" + successorHost + "/KVStore");
 					Iterator<Entry<Long,ValueTimeStamp>> itr = BoltDBServer.KVStore.entrySet().iterator();
@@ -219,7 +219,7 @@ public class GroupMembership implements Runnable {
 						successorRMIServer.insert(entry.getKey(), entry.getValue(), false,null);
 					}
 					BoltDBServer.KVStore.clear();
-					
+					*/
 					MembershipBean mBean = membershipList.get(pid);
 					mBean.hearbeatLastReceived = -1;
 					mBean.timeStamp = System.currentTimeMillis();
@@ -292,6 +292,19 @@ public class GroupMembership implements Runnable {
 					System.out.println("looparound");
 					System.out.println("-------------------------------------------------");
 					System.out.println();
+				} else if(commandString.equals("show")) {
+					System.out.println("-------------------------------------------------");
+					System.out.println("RECENT READS");
+					Iterator itr = BoltDBServer.readBuffer.iterator();
+					while(itr.hasNext()) {
+						System.out.println((Operation)itr.next());
+					}
+					System.out.println("-------------------------------------------------");
+					System.out.println("RECENT WRITES");
+					itr = BoltDBServer.writeBuffer.iterator();
+					while(itr.hasNext()) {
+						System.out.println((Operation)itr.next());
+					}
 				}
 			}
 		} catch (Exception e) {

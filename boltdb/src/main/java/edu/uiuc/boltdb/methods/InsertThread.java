@@ -3,6 +3,7 @@ package edu.uiuc.boltdb.methods;
 import java.net.InetAddress;
 import java.rmi.Naming;
 import java.rmi.RemoteException;
+import java.util.Date;
 import java.util.concurrent.Callable;
 
 import edu.uiuc.boltdb.BoltDBProtocol;
@@ -10,6 +11,7 @@ import edu.uiuc.boltdb.BoltDBProtocol.CONSISTENCY_LEVEL;
 import edu.uiuc.boltdb.BoltDBServer;
 import edu.uiuc.boltdb.ValueTimeStamp;
 import edu.uiuc.boltdb.groupmembership.GroupMembership;
+import edu.uiuc.boltdb.groupmembership.beans.Operation;
 
 public class InsertThread implements Callable<Boolean> {
 	private String targetHost;
@@ -34,6 +36,8 @@ public class InsertThread implements Callable<Boolean> {
 				return false;
 				//throw new RemoteException("Key already present.");
 			BoltDBServer.KVStore.put(key, value);
+			if(consistencyLevel != null)
+				BoltDBServer.writeBuffer.add(new Operation("INSERT", consistencyLevel, new Date().toString(), key, value.value));
 			return true;
 		} else {
 			BoltDBProtocol targetServer = (BoltDBProtocol) Naming
