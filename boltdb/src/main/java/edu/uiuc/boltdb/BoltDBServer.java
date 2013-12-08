@@ -10,6 +10,7 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
 import java.security.NoSuchAlgorithmException;
 import java.util.Collections;
+import java.util.Date;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.SortedMap;
@@ -56,7 +57,6 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 	 * @param args
 	 */
 	public static ConcurrentMap<Long,ValueTimeStamp> KVStore = new ConcurrentHashMap<Long,ValueTimeStamp>();
-
 
 	public static void main(String[] args) throws IOException {
 		
@@ -152,7 +152,8 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 	public Boolean insert(long key, ValueTimeStamp value, boolean canBeForwarded,CONSISTENCY_LEVEL consistencyLevel) throws RemoteException {
 		if(!canBeForwarded) {
 			if(KVStore.containsKey(key))
-				throw new RemoteException("Key already present.");
+				//throw new RemoteException("Key already present.");
+				return false;
 			KVStore.put(key, value);
 			return true;
 		}
@@ -172,7 +173,6 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 			boolean result = waitForReplicaReplies(completionService, consistencyLevel);
 			pool.shutdown();
 			return result;
-
 		} catch (Exception e) {
 			log.error("ERROR" , e);
 			throw new RemoteException("Error occured at Server");
@@ -259,7 +259,8 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 	public Boolean delete(long key, boolean canBeForwarded,CONSISTENCY_LEVEL consistencyLevel) throws RemoteException {
 		if(!canBeForwarded) {
 			if(!KVStore.containsKey(key))
-				throw new RemoteException("Key not present.");
+				//throw new RemoteException("Key not present.");
+				return false;
 			KVStore.remove(key);
 			return true;
 		}
@@ -300,13 +301,18 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 					if (hashOfKey >= startKeyRange && hashOfKey <= endKeyRange) {
 						System.out.println("Inserting " + hashOfKey + " from "
 								+ GroupMembership.pid + " to " + hostname);
+						log.info("["+new Date()+"]Inserting " + hashOfKey + " from "
+								+ GroupMembership.pid + " to " + hostname);
 						targetServer.insert(e.getKey(), e.getValue(), false,null);
 					}
 				} else {
 					if (hashOfKey >= startKeyRange || hashOfKey <= endKeyRange) {
 						System.out.println("Inserting " + hashOfKey + " from "
 								+ GroupMembership.pid + " to " + hostname);
+						log.info("["+new Date()+"]Inserting " + hashOfKey + " from "
+									+ GroupMembership.pid + " to " + hostname);
 						targetServer.insert(e.getKey(), e.getValue(), false,null);
+
 					}
 				}
 			} catch (NoSuchAlgorithmException e1) {

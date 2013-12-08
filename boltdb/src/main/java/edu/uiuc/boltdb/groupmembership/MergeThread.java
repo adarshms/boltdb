@@ -115,7 +115,7 @@ public class MergeThread implements Runnable
 				//Also update current node's membership list
 				if(receivedMBean.hearbeatLastReceived <= 0 && currentMBean.hearbeatLastReceived > 0) {
 					System.out.println("VOLUNTARILY LEFT : " + receivedPid+ " at "+(new Date()).toString());
-					log.info("VOLUNTARILY LEFT - - - " + receivedPid);
+					log.info("["+new Date()+"]VOLUNTARILY LEFT - - - " + receivedPid);
 					currentMBean.hearbeatLastReceived = -1;
 					currentMBean.timeStamp = System.currentTimeMillis();
 					currentMBean.toBeDeleted = false;
@@ -130,6 +130,7 @@ public class MergeThread implements Runnable
                         currentMBean.timeStamp = System.currentTimeMillis();
                         if(currentMBean.toBeDeleted) {
                                 System.out.println("JOINED : " + receivedPid);
+                                log.info("["+new Date()+"]JOINED : " + receivedPid);
                                 currentMBean.toBeDeleted = false;
                         }
                         GroupMembership.membershipList.put(receivedPid, currentMBean); 
@@ -146,17 +147,17 @@ public class MergeThread implements Runnable
 						System.currentTimeMillis(), receivedMBean.hashValue,
 						false);
 
-				// System.out.println("JOINED : " + receivedPid+" at "+(new
-				// Date()).toString());
-				log.info("JOINED - - - " + receivedPid);
+				System.out.println("JOINED : " + receivedPid+" at "+(new
+						Date()).toString());
+				log.info("["+new Date()+"]JOINED - - - " + receivedPid);
 				// Get the successor of newly joined node
 				if((System.currentTimeMillis() - GroupMembership.startTime) > (GroupMembership.tFail * 1000)) {
 					
 					boolean amISuccessor = amITheSuccesorOf(receivedMBean.hashValue);
 					if (amISuccessor) {
 						// If you are the successor,move keys accordingly.
-						System.out.println("hey I'm the succ of newly joined node:"
-								+ receivedHost);
+						//System.out.println("hey I'm the succ of newly joined node:"
+							//	+ receivedHost);
 						moveKeysSucc(receivedHost, mBean.hashValue);
 					} else if (GroupMembership.membershipList.size() >= 3) {
 						int amIInPredReReplicationSeg = GroupMembership
@@ -165,9 +166,9 @@ public class MergeThread implements Runnable
 												.get(GroupMembership.pid).hashValue,
 										mBean.hashValue);
 						if (amIInPredReReplicationSeg != -1) {
-							System.out.println("hey I'm the "
-									+ amIInPredReReplicationSeg
-									+ " pred of newly joined node:" + receivedHost);
+							//System.out.println("hey I'm the "
+								//	+ amIInPredReReplicationSeg
+								//	+ " pred of newly joined node:" + receivedHost);
 							moveKeysPred(receivedHost, mBean.hashValue,
 									amIInPredReReplicationSeg);
 						}
@@ -226,11 +227,18 @@ public class MergeThread implements Runnable
 						System.out.println("Inserting key :" + entry.getKey()
 								+ " value:" + entry.getValue() + " from Me to "
 								+ targetHost);
+						log.info("["+new Date()+"]Inserting key :" + entry.getKey()
+								+ " value:" + entry.getValue() + " from Me to "
+								+ targetHost);
 						targetRMIServer.insert(entry.getKey(),
 								entry.getValue(), false, null);
 						// BoltDBServer.KVStore.remove(entry.getKey());
 						// Delete this key in successor's successor
+						
 						if (GroupMembership.membershipList.size() >= 3) {
+							log.info("["+new Date()+"]Deleting key :"
+									+ entry.getKey() + " from "
+									+ succSuccessorHost);
 							System.out.println("Deleting key :"
 									+ entry.getKey() + " from "
 									+ succSuccessorHost);
@@ -246,12 +254,18 @@ public class MergeThread implements Runnable
 						System.out.println("Inserting key :" + entry.getKey()
 								+ " value:" + entry.getValue() + " from Me to "
 								+ targetHost);
+						log.info("["+new Date()+"]Inserting key :" + entry.getKey()
+								+ " value:" + entry.getValue() + " from Me to "
+								+ targetHost);
 						targetRMIServer.insert(entry.getKey(),
 								entry.getValue(), false,null);
 						// BoltDBServer.KVStore.remove(entry.getKey());
 						// Delete this key in successor's successor
 						if (GroupMembership.membershipList.size() >= 3) {
 							System.out.println("Deleting key :"
+									+ entry.getKey() + " from "
+									+ succSuccessorHost);
+							log.info("["+new Date()+"]Deleting key :"
 									+ entry.getKey() + " from "
 									+ succSuccessorHost);
 							succSuccRMIServer.delete(entry.getKey(), false, null);
@@ -287,19 +301,24 @@ public class MergeThread implements Runnable
 			if (myHash > myPredecessor) {
 				if ( hashOfKey > myPredecessor && hashOfKey <= myHash) {
 					System.out.println("Inserting key :" + entry.getKey() + " from Me to " + targetHost);
+					log.info("["+new Date()+"]Inserting key :" + entry.getKey() + " from Me to " + targetHost);
 					targetRMIServer.insert(entry.getKey(), entry.getValue(),false, null);
 					
 					System.out.println("Deleting key :" + entry.getKey() + " from " + kpthSuccHost);
+					log.info("["+new Date()+"]Deleting key :" + entry.getKey() + " from " + kpthSuccHost);
 					kpthSuccRMIServer.delete(entry.getKey(), false, null);
 				} 
 			}
 			else {
 				if ( hashOfKey > myPredecessor || hashOfKey <= myHash) {
 					System.out.println("Inserting key :" + entry.getKey() + " from Me to " + targetHost);
+					log.info("["+new Date()+"]Inserting key :" + entry.getKey() + " from Me to " + targetHost);
 					targetRMIServer.insert(entry.getKey(), entry.getValue(),false, null);
 					
+					log.info("["+new Date()+"]Deleting key :" + entry.getKey() + " from " + kpthSuccHost);
 					System.out.println("Deleting key :" + entry.getKey() + " from " + kpthSuccHost);
 					kpthSuccRMIServer.delete(entry.getKey(), false, null);
+
 				} 
 			}
 		}

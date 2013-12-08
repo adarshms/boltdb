@@ -233,7 +233,7 @@ public class GroupMembership implements Runnable {
 				 * The show command prints the current membershipList entries and the current KVStore
 				 * entries on the console.
 				 */
-				else if(commandString.equals("show")) {
+				else if(commandString.equals("shownodes")) {
 					System.out.println("-------------------------------------------------");
 					System.out.println("Membership List : ");
 					System.out.println("-------------------------------------------------");
@@ -243,30 +243,41 @@ public class GroupMembership implements Runnable {
 					}
 					System.out.println("-------------------------------------------------");
 					System.out.println();
+				}
+				else if(commandString.equals("showKV")) {
 					System.out.println("-------------------------------------------------");
 					System.out.println("Key Value Store : ");
 					System.out.println("-------------------------------------------------");
 					long myHash = GroupMembership.membershipList.get(GroupMembership.pid).hashValue;
 					long myPredecessor = GroupMembership.membershipList.get(GroupMembership.getPredecessorNode(myHash)).hashValue;
+					int primaryCount=0,replicaCount=0;
 					for (Map.Entry<Long, ValueTimeStamp> entry : BoltDBServer.KVStore.entrySet())
 					{
 						long hashOfKey = computeHash((new Long(entry.getKey())).toString());
 					    System.out.print(entry.getKey() + " ---> " + entry.getValue() + "   |   Hash of Key - " + hashOfKey + "   ");
 					    if(myHash > myPredecessor) {
-					    	if(hashOfKey > myPredecessor && hashOfKey <= myHash)
+					    	if(hashOfKey > myPredecessor && hashOfKey <= myHash) {
 					    		System.out.println("Primary");
-					    	else
+					    		primaryCount++;
+					    	}
+					    	else {
 						    	System.out.println("Replica");
+						    	replicaCount++;
+					    	}
 					    }
 					    else {
-					    	if(hashOfKey > myPredecessor || hashOfKey <= myHash)
+					    	if(hashOfKey > myPredecessor || hashOfKey <= myHash) {
 					    		System.out.println("Primary");
-					    	else
+					    		primaryCount++;
+					    	}
+					    	else {
 						    	System.out.println("Replica");
+						    	replicaCount++;
+					    	}
 					    }
-					    
 					}
 					System.out.println("-------------------------------------------------");
+					System.out.println("Primary - " + primaryCount + " Replicas - " + replicaCount + " Total - " + (primaryCount+replicaCount));
 					System.out.println();
 				}
 				else if(commandString.equals("ring")) {
@@ -281,34 +292,6 @@ public class GroupMembership implements Runnable {
 					System.out.println("looparound");
 					System.out.println("-------------------------------------------------");
 					System.out.println();
-				}
-				else {
-					StringTokenizer stk = new StringTokenizer(commandString);
-					String checkCommand = stk.nextToken();
-					if(checkCommand.equals("checksucc"))
-					{
-						long thisNode = Long.parseLong(stk.nextToken());
-						long failedNode = Long.parseLong(stk.nextToken());
-						System.out.println("inSuccReReplicationSeg output --> " + inSuccReReplicationSeg(thisNode, failedNode));
-					}
-					else if(checkCommand.equals("checkpred"))
-					{
-						long thisNode = Long.parseLong(stk.nextToken());
-						long failedNode = Long.parseLong(stk.nextToken());
-						System.out.println("inPredReReplicationSeg output --> " + inPredReReplicationSeg(thisNode, failedNode));
-					}
-					else if(checkCommand.equals("succ"))
-					{
-						long thisNode = Long.parseLong(stk.nextToken());
-						int k = Integer.parseInt(stk.nextToken());
-						System.out.println("Successor of " + thisNode + " --> " + computeHash(getKthSuccessorNode(thisNode, k)));
-					}
-					else if(checkCommand.equals("pred"))
-					{
-						long thisNode = Long.parseLong(stk.nextToken());
-						int k = Integer.parseInt(stk.nextToken());
-						System.out.println("Predecessor of " + thisNode + " --> " + computeHash(getKthPredecessorNode(thisNode, k)));
-					}
 				}
 			}
 		} catch (Exception e) {
@@ -426,7 +409,7 @@ public class GroupMembership implements Runnable {
 		long myhash = membershipList.get(GroupMembership.pid).hashValue;
 		int successorPosition = inSuccReReplicationSeg(myhash,hashCrashedNode);
 		if (successorPosition != -1) {
-			System.out.println("successor position:"+successorPosition);
+			//System.out.println("successor position:"+successorPosition);
 			long startKey, endKey;
 			String targetNode;
 			if(successorPosition == 3) {
@@ -440,13 +423,12 @@ public class GroupMembership implements Runnable {
 				endKey = membershipList.get(targetNode).hashValue;
 			}
 			
-			System.out.println("startkey:"+startKey+ " endKey:"+endKey+" targetNode:"+targetNode);
+			//System.out.println("startkey:"+startKey+ " endKey:"+endKey+" targetNode:"+targetNode);
 			BoltDBProtocol targetRMIServer = null;
 			int i = 0;
-			System.out.println("membership list:"+ membershipList);
 			while (i++ < replicationFactor - 1) {
 				try {
-					System.out.println("trying to connect to targetNode pid :"+targetNode+" with hostname :"+ membershipList.get(targetNode).hostname );
+					//System.out.println("trying to connect to targetNode pid :"+targetNode+" with hostname :"+ membershipList.get(targetNode).hostname );
 					targetRMIServer = (BoltDBProtocol) Naming.lookup("rmi://"
 							+ membershipList.get(targetNode).hostname + "/KVStore");
 					targetRMIServer.lookupAndInsertInto(membershipList.get(pid).hostname, startKey, endKey);

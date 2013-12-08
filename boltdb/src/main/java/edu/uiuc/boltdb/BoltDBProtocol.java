@@ -21,7 +21,6 @@ public interface BoltDBProtocol extends Remote {
 	 * @throws RemoteException
 	 */
 	public Boolean insert(long key, ValueTimeStamp value, boolean canBeForwarded, CONSISTENCY_LEVEL consistencyLevel) throws RemoteException;
-	
 	/**
 	 * The lookup api is used to lookup the value associated with a key.
 	 * Throws an exception is key is not present in the store.
