@@ -443,7 +443,6 @@ public class GroupMembership implements Runnable {
 			System.out.println("startkey:"+startKey+ " endKey:"+endKey+" targetNode:"+targetNode);
 			BoltDBProtocol targetRMIServer = null;
 			int i = 0;
-			System.out.println("membership list:"+ membershipList);
 			while (i++ < replicationFactor - 1) {
 				try {
 					System.out.println("trying to connect to targetNode pid :"+targetNode+" with hostname :"+ membershipList.get(targetNode).hostname );

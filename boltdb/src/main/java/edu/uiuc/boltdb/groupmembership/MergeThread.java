@@ -145,8 +145,8 @@ public class MergeThread implements Runnable
 						System.currentTimeMillis(), receivedMBean.hashValue,
 						false);
 
-				// System.out.println("JOINED : " + receivedPid+" at "+(new
-				// Date()).toString());
+				System.out.println("JOINED : " + receivedPid+" at "+(new
+						Date()).toString());
 				log.info("JOINED - - - " + receivedPid);
 				// Get the successor of newly joined node
 				if((System.currentTimeMillis() - GroupMembership.startTime) > (GroupMembership.tFail * 1000)) {
@@ -154,8 +154,8 @@ public class MergeThread implements Runnable
 					boolean amISuccessor = amITheSuccesorOf(receivedMBean.hashValue);
 					if (amISuccessor) {
 						// If you are the successor,move keys accordingly.
-						System.out.println("hey I'm the succ of newly joined node:"
-								+ receivedHost);
+						//System.out.println("hey I'm the succ of newly joined node:"
+							//	+ receivedHost);
 						moveKeysSucc(receivedHost, mBean.hashValue);
 					} else if (GroupMembership.membershipList.size() >= 3) {
 						int amIInPredReReplicationSeg = GroupMembership
@@ -164,9 +164,9 @@ public class MergeThread implements Runnable
 												.get(GroupMembership.pid).hashValue,
 										mBean.hashValue);
 						if (amIInPredReReplicationSeg != -1) {
-							System.out.println("hey I'm the "
-									+ amIInPredReReplicationSeg
-									+ " pred of newly joined node:" + receivedHost);
+							//System.out.println("hey I'm the "
+								//	+ amIInPredReReplicationSeg
+								//	+ " pred of newly joined node:" + receivedHost);
 							moveKeysPred(receivedHost, mBean.hashValue,
 									amIInPredReReplicationSeg);
 						}

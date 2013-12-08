@@ -45,7 +45,7 @@ public class RefreshMembershipListThread implements Runnable
 			} 
 			
 			//Remove entry which is marked toBeDeleted
-			if (membershipBean.toBeDeleted) 
+			if (membershipBean.toBeDeleted && ((System.currentTimeMillis() - membershipBean.timeStamp) >= (2 * tFail * 1000))) 
 			{
 				try {
 					GroupMembership.handleCrash(membershipBean.hashValue);
@@ -56,7 +56,7 @@ public class RefreshMembershipListThread implements Runnable
 				GroupMembership.membershipList.remove(entry.getKey());
 			} 
 			//If the membership list entry has timed-out then mark it toBeDeleted
-			else if (System.currentTimeMillis() - membershipBean.timeStamp >= tFail * 1000) 
+			else if (System.currentTimeMillis() - membershipBean.timeStamp >= tFail * 1000 && !membershipBean.toBeDeleted) 
 			{
 				membershipBean.toBeDeleted = true;
 				if (membershipBean.hearbeatLastReceived > 0) {
