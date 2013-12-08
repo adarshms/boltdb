@@ -20,7 +20,7 @@ public interface BoltDBProtocol extends Remote {
 	 * @param canBeForwarded
 	 * @throws RemoteException
 	 */
-	public void insert(long key, String value, boolean canBeForwarded) throws RemoteException;
+	public Boolean insert(long key, ValueTimeStamp value, boolean canBeForwarded, CONSISTENCY_LEVEL consistencyLevel) throws RemoteException;
 	
 	/**
 	 * The lookup api is used to lookup the value associated with a key.
@@ -30,7 +30,7 @@ public interface BoltDBProtocol extends Remote {
 	 * @return
 	 * @throws RemoteException
 	 */
-	public String lookup(long key, boolean canBeForwarded) throws RemoteException;
+	public ValueTimeStamp lookup(long key, boolean canBeForwarded, CONSISTENCY_LEVEL consistencyLevel) throws RemoteException;
 
 	/**
 	 * The update api updates the value of the provided key with the new value.
@@ -40,7 +40,7 @@ public interface BoltDBProtocol extends Remote {
 	 * @param canBeForwarded
 	 * @throws RemoteException
 	 */
-	public void update(long key, String value, boolean canBeForwarded) throws RemoteException;
+	public Boolean update(long key, ValueTimeStamp value, boolean canBeForwarded, CONSISTENCY_LEVEL consistencyLevel) throws RemoteException;
 
 	/**
 	 * The delete api removes the key-value entry from the store.
@@ -49,8 +49,11 @@ public interface BoltDBProtocol extends Remote {
 	 * @param canBeForwarded
 	 * @throws RemoteException
 	 */
-	public void delete(long key, boolean canBeForwarded) throws RemoteException;
+	public Boolean delete(long key, boolean canBeForwarded, CONSISTENCY_LEVEL consistencyLevel) throws RemoteException;
 	
 	public void lookupAndInsertInto(String hostname, long startKeyRange, long endKeyRange) throws RemoteException;
-
+	
+	public enum CONSISTENCY_LEVEL {
+		ONE, QUORUM, ALL
+	}
 }

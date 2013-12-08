@@ -24,6 +24,7 @@ import com.google.gson.reflect.TypeToken;
 
 import edu.uiuc.boltdb.BoltDBProtocol;
 import edu.uiuc.boltdb.BoltDBServer;
+import edu.uiuc.boltdb.ValueTimeStamp;
 import edu.uiuc.boltdb.groupmembership.beans.MembershipBean;
 import edu.uiuc.boltdb.groupmembership.beans.UDPBean;
 
@@ -201,7 +202,7 @@ public class MergeThread implements Runnable
 	private void moveKeysSucc(String targetHost, long hashOfNewJoinedNode) throws MalformedURLException, RemoteException, NotBoundException, NoSuchAlgorithmException {
 		//get the rmiserver handle from the rmi registry
 		BoltDBProtocol targetRMIServer = (BoltDBProtocol) Naming.lookup("rmi://" + targetHost + "/KVStore");
-		Iterator<Entry<Long,String>> itr = BoltDBServer.KVStore.entrySet().iterator();
+		Iterator<Entry<Long,ValueTimeStamp>> itr = BoltDBServer.KVStore.entrySet().iterator();
 		long myHash = GroupMembership.membershipList.get(GroupMembership.pid).hashValue;
 		
 		// Get the rmiserver handle for successor's successor from the rmi registry
@@ -212,7 +213,7 @@ public class MergeThread implements Runnable
 			predecessorHash = GroupMembership.membershipList.get(GroupMembership.getKthPredecessorNode(myHash, 1)).hashValue;
 		
 		while(itr.hasNext()) {
-			Entry<Long,String> entry = itr.next();
+			Entry<Long,ValueTimeStamp> entry = itr.next();
 			long hashOfKey = GroupMembership.computeHash(entry.getKey().toString());
 			if (predecessorHash == myHash
 					|| amIPrimaryReplicaFor(hashOfKey, myHash, predecessorHash)) {
@@ -226,14 +227,14 @@ public class MergeThread implements Runnable
 								+ " value:" + entry.getValue() + " from Me to "
 								+ targetHost);
 						targetRMIServer.insert(entry.getKey(),
-								entry.getValue(), false);
+								entry.getValue(), false, null);
 						// BoltDBServer.KVStore.remove(entry.getKey());
 						// Delete this key in successor's successor
 						if (GroupMembership.membershipList.size() >= 3) {
 							System.out.println("Deleting key :"
 									+ entry.getKey() + " from "
 									+ succSuccessorHost);
-							succSuccRMIServer.delete(entry.getKey(), false);
+							succSuccRMIServer.delete(entry.getKey(), false, null);
 						}
 					}
 				}
@@ -246,14 +247,14 @@ public class MergeThread implements Runnable
 								+ " value:" + entry.getValue() + " from Me to "
 								+ targetHost);
 						targetRMIServer.insert(entry.getKey(),
-								entry.getValue(), false);
+								entry.getValue(), false,null);
 						// BoltDBServer.KVStore.remove(entry.getKey());
 						// Delete this key in successor's successor
 						if (GroupMembership.membershipList.size() >= 3) {
 							System.out.println("Deleting key :"
 									+ entry.getKey() + " from "
 									+ succSuccessorHost);
-							succSuccRMIServer.delete(entry.getKey(), false);
+							succSuccRMIServer.delete(entry.getKey(), false, null);
 						}
 					}
 				}
@@ -279,26 +280,26 @@ public class MergeThread implements Runnable
 		BoltDBProtocol kpthSuccRMIServer = (BoltDBProtocol) Naming.lookup("rmi://" + kpthSuccHost + "/KVStore");
 
 		long myPredecessor = GroupMembership.membershipList.get(GroupMembership.getPredecessorNode(myHash)).hashValue;
-		Iterator<Entry<Long,String>> itr = BoltDBServer.KVStore.entrySet().iterator();
+		Iterator<Entry<Long,ValueTimeStamp>> itr = BoltDBServer.KVStore.entrySet().iterator();
 		while(itr.hasNext()) {
-			Entry<Long,String> entry = itr.next();
+			Entry<Long,ValueTimeStamp> entry = itr.next();
 			long hashOfKey = GroupMembership.computeHash(entry.getKey().toString());
 			if (myHash > myPredecessor) {
 				if ( hashOfKey > myPredecessor && hashOfKey <= myHash) {
 					System.out.println("Inserting key :" + entry.getKey() + " from Me to " + targetHost);
-					targetRMIServer.insert(entry.getKey(), entry.getValue(),false);
+					targetRMIServer.insert(entry.getKey(), entry.getValue(),false, null);
 					
 					System.out.println("Deleting key :" + entry.getKey() + " from " + kpthSuccHost);
-					kpthSuccRMIServer.delete(entry.getKey(), false);
+					kpthSuccRMIServer.delete(entry.getKey(), false, null);
 				} 
 			}
 			else {
 				if ( hashOfKey > myPredecessor || hashOfKey <= myHash) {
 					System.out.println("Inserting key :" + entry.getKey() + " from Me to " + targetHost);
-					targetRMIServer.insert(entry.getKey(), entry.getValue(),false);
+					targetRMIServer.insert(entry.getKey(), entry.getValue(),false, null);
 					
 					System.out.println("Deleting key :" + entry.getKey() + " from " + kpthSuccHost);
-					kpthSuccRMIServer.delete(entry.getKey(), false);
+					kpthSuccRMIServer.delete(entry.getKey(), false, null);
 				} 
 			}
 		}

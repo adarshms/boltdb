@@ -70,11 +70,18 @@ public class BoltDBClient {
 		}
 	}
 	
+	private BoltDBProtocol.CONSISTENCY_LEVEL getConsistency(String clevel) {
+		if(clevel.equals("ONE")) return BoltDBProtocol.CONSISTENCY_LEVEL.ONE;
+		else if (clevel.equals("QUORUM")) return BoltDBProtocol.CONSISTENCY_LEVEL.QUORUM;
+		else if (clevel.equals("ALL")) return BoltDBProtocol.CONSISTENCY_LEVEL.ALL;
+		
+		return null;
+	}
 	// This method handles the commands entered by the user in the boltdb-client shell
 	private void handleCommand(String commandString) {
 		try {
 			StringTokenizer stk = new StringTokenizer(commandString);
-			if(stk.countTokens() < 2) {
+			if(stk.countTokens() < 3) {
 				printUsage(0);
 				return;
 			}
@@ -83,6 +90,13 @@ public class BoltDBClient {
 			String commandType = stk.nextToken();
 			
 			if(commandType.equals("insert")) {
+				String clevel = stk.nextToken();
+				if (!clevel.equals("ONE") && !clevel.equals("QUORUM") && !clevel.equals("ALL")) {
+					printUsage(1);
+					return;
+				}
+				BoltDBProtocol.CONSISTENCY_LEVEL consistencyLevel = getConsistency(clevel);
+
 				String keyStr = stk.nextToken();
 				long key = parseKey(keyStr);
 				if(key == -1) return;
@@ -97,8 +111,15 @@ public class BoltDBClient {
 				}
 				value = value.trim();
 				// Perform Insert Operation on the remote server object
-				boltDBServer.insert(key, value, true);
+				boltDBServer.insert(key, new ValueTimeStamp(value, 0), true,consistencyLevel);
 			} else if(commandType.equals("update")) {
+				String clevel = stk.nextToken();
+				if (!clevel.equals("ONE") && !clevel.equals("QUORUM") && !clevel.equals("ALL")) {
+					printUsage(2);
+					return;
+				}
+				BoltDBProtocol.CONSISTENCY_LEVEL consistencyLevel = getConsistency(clevel);
+				
 				String keyStr = stk.nextToken();
 				long key = parseKey(keyStr);
 				if(key == -1) return;
@@ -113,20 +134,33 @@ public class BoltDBClient {
 				}
 				value = value.trim();
 				// Perform Update Operation on the remote server object
-				boltDBServer.update(key, value, true);
+				boltDBServer.update(key, new ValueTimeStamp(value, 0), true, consistencyLevel);
 			} else if(commandType.equals("lookup")) {
+				String clevel = stk.nextToken();
+				if (!clevel.equals("ONE") && !clevel.equals("QUORUM") && !clevel.equals("ALL")) {
+					printUsage(3);
+					return;
+				}
+				BoltDBProtocol.CONSISTENCY_LEVEL consistencyLevel = getConsistency(clevel);
+				
 				String keyStr = stk.nextToken();
 				long key = parseKey(keyStr);
 				if(key == -1) return;
 				// Perform LookUp Operation on the remote server object
-				String value = (String)boltDBServer.lookup(key, true);
-				System.out.println("Look Up Result : " + value);
+				ValueTimeStamp value = boltDBServer.lookup(key, true, consistencyLevel);
+				System.out.println("Look Up Result : " + value.value);
 			} else if(commandType.equals("delete")) {
+				String clevel = stk.nextToken();
+				if (!clevel.equals("ONE") && !clevel.equals("QUORUM") && !clevel.equals("ALL")) {
+					printUsage(4);
+					return;
+				}
+				BoltDBProtocol.CONSISTENCY_LEVEL consistencyLevel = getConsistency(clevel);
 				String keyStr = stk.nextToken();
 				long key = parseKey(keyStr);
 				if(key == -1) return;
 				// Perform Delete Operation on the remote server object
-				boltDBServer.delete(key, true);
+				boltDBServer.delete(key, true, consistencyLevel);
 				System.out.println("Key Value Pair Deleted");
 			} else {
 				printUsage(0);
@@ -161,18 +195,18 @@ public class BoltDBClient {
 		System.out.println("Invalid Command");
 		System.out.println("Usage : ");
 		switch(type) {
-		case 1: System.out.println("insert <key> <value>");
+		case 1: System.out.println("insert <clevel> <key> <value>");
 				break;
-		case 2: System.out.println("update <key> <value>");
+		case 2: System.out.println("update <clevel> <key> <value>");
 				break;
-		case 3: System.out.println("lookukp <key>");
+		case 3: System.out.println("lookukp <clevel> <key>");
 				break;
-		case 4: System.out.println("delete <key>");
+		case 4: System.out.println("delete <clevel> <key>");
 				break;
-		default:System.out.println("insert <key> <value>");
-				System.out.println("update <key> <value>");
-				System.out.println("lookup <key>");
-				System.out.println("delete <key>");
+		default:System.out.println("insert <clevel> <key> <value>");
+				System.out.println("update <clevel> <key> <value>");
+				System.out.println("lookup <clevel> <key>");
+				System.out.println("delete <clevel> <key>");
 				break;
 		}
 		System.out.println("<key> is an integer value in the range 0 - 1000000");

@@ -212,11 +212,11 @@ public class GroupMembership implements Runnable {
 					long myHash = GroupMembership.membershipList.get(GroupMembership.pid).hashValue;
 					String successorHost = GroupMembership.membershipList.get(getSuccessorNode(myHash)).hostname;
 					BoltDBProtocol successorRMIServer = (BoltDBProtocol) Naming.lookup("rmi://" + successorHost + "/KVStore");
-					Iterator<Entry<Long,String>> itr = BoltDBServer.KVStore.entrySet().iterator();
+					Iterator<Entry<Long,ValueTimeStamp>> itr = BoltDBServer.KVStore.entrySet().iterator();
 					
 					while(itr.hasNext()) {
-						Entry<Long,String> entry = itr.next();
-						successorRMIServer.insert(entry.getKey(), entry.getValue(), false);
+						Entry<Long,ValueTimeStamp> entry = itr.next();
+						successorRMIServer.insert(entry.getKey(), entry.getValue(), false,null);
 					}
 					BoltDBServer.KVStore.clear();
 					
@@ -248,7 +248,7 @@ public class GroupMembership implements Runnable {
 					System.out.println("-------------------------------------------------");
 					long myHash = GroupMembership.membershipList.get(GroupMembership.pid).hashValue;
 					long myPredecessor = GroupMembership.membershipList.get(GroupMembership.getPredecessorNode(myHash)).hashValue;
-					for (Map.Entry<Long, String> entry : BoltDBServer.KVStore.entrySet())
+					for (Map.Entry<Long, ValueTimeStamp> entry : BoltDBServer.KVStore.entrySet())
 					{
 						long hashOfKey = computeHash((new Long(entry.getKey())).toString());
 					    System.out.print(entry.getKey() + " ---> " + entry.getValue() + "   |   Hash of Key - " + hashOfKey + "   ");
