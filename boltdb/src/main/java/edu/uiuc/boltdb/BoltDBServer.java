@@ -1,20 +1,13 @@
 package edu.uiuc.boltdb;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.MalformedURLException;
 import java.rmi.Naming;
-import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
 import java.security.NoSuchAlgorithmException;
-import java.util.Collections;
 import java.util.Date;
-import java.util.Map;
 import java.util.Map.Entry;
-import java.util.SortedMap;
-import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
@@ -23,10 +16,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import org.apache.commons.collections.buffer.CircularFifoBuffer;
 import org.apache.log4j.Logger;
 
-import edu.uiuc.boltdb.BoltDBProtocol.CONSISTENCY_LEVEL;
 import edu.uiuc.boltdb.groupmembership.GroupMembership;
+import edu.uiuc.boltdb.groupmembership.beans.Operation;
 import edu.uiuc.boltdb.methods.DeleteThread;
 import edu.uiuc.boltdb.methods.InsertThread;
 import edu.uiuc.boltdb.methods.LookupThread;
@@ -37,17 +31,20 @@ import edu.uiuc.boltdb.methods.UpdateThread;
  * BoltDBProtocol interface. On startup, it starts the GroupMembership service. It maintains a
  * ConcurrentHashMap KVStore that stores the key-value pairs that are destined for this host. Since it implements
  * the BoltDBProtocol, it provides the Remote methods to insert, lookup, update and delete keys. Upon request
- * from a client, depending on the target host and the canBeForwarded flag, it performs the operation on 
- * the local key value store (If it is the target host) or forwards the operation by determining the target
- * host from its MembershipList. 
- * @author Adarsh
- *
+ * from a client, the request is forwarded to all the replicas of the key(Active replication) by spawning
+ * k threads where k is the replication factor.
+ * Each request takes in consistency level as parameter and accordingly waits for one or more threads to respond before
+ * sending back the result to the client.
  */
 
 public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol {
 
 	private static final long serialVersionUID = 5195393553928167809L;
 	private static org.apache.log4j.Logger log = Logger.getRootLogger();
+	
+	//Buffer to hold most recent reads and writes
+	public static CircularFifoBuffer readBuffer = new CircularFifoBuffer(10);
+	public static CircularFifoBuffer writeBuffer = new CircularFifoBuffer(10);
 	
 	protected BoltDBServer() throws RemoteException {
 		super();
@@ -56,6 +53,7 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 	/**
 	 * @param args
 	 */
+	//The in-memory key value store !
 	public static ConcurrentMap<Long,ValueTimeStamp> KVStore = new ConcurrentHashMap<Long,ValueTimeStamp>();
 
 	public static void main(String[] args) throws IOException {
@@ -70,6 +68,12 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 		Naming.rebind ("KVStore", new BoltDBServer());
 	}
 	
+	/**
+	 * Gets the hostname of all the replicas of the key
+	 * @param key
+	 * @return
+	 * @throws NoSuchAlgorithmException
+	 */
 	private String[] getTargetHosts(long key) throws NoSuchAlgorithmException {
 		String targetHost = null;
 		String[] targetHosts = new String[GroupMembership.replicationFactor];
@@ -102,6 +106,14 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 		return -1;
 	}
 	
+	/**
+	 * Collects results from few replicas depending on the consistency level 
+	 * @param completionService
+	 * @param consistencyLevel
+	 * @return
+	 * @throws InterruptedException
+	 * @throws ExecutionException
+	 */
 	private boolean waitForReplicaReplies(ExecutorCompletionService<Boolean> completionService, CONSISTENCY_LEVEL consistencyLevel) throws InterruptedException, ExecutionException {
 		int replicaRepliesToWaitFor = convertConsistencyLevelToInt(consistencyLevel);
 		
@@ -117,7 +129,7 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 		return false;
 	}
 	
-	private ValueTimeStamp waitForReplicaRepliesForUpdate(ExecutorCompletionService<ValueTimeStamp> completionService, CONSISTENCY_LEVEL consistencyLevel) throws InterruptedException, ExecutionException {
+	private ValueTimeStamp waitForReplicaRepliesForLookup(ExecutorCompletionService<ValueTimeStamp> completionService, CONSISTENCY_LEVEL consistencyLevel) throws InterruptedException, ExecutionException {
 		int replicaRepliesToWaitFor = convertConsistencyLevelToInt(consistencyLevel);
 		ValueTimeStamp result = null;
 		ValueTimeStamp temp;
@@ -155,12 +167,14 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 				//throw new RemoteException("Key already present.");
 				return false;
 			KVStore.put(key, value);
+			if(consistencyLevel != null)
+				writeBuffer.add(new Operation("INSERT", consistencyLevel, new Date().toString(), key, value.value));
 			return true;
 		}
 		
 		value.timeStamp = System.currentTimeMillis();
 		try {
-			// Determine the target host using the getSuccessorNodeOf method
+			// Determine the target hosts using the getSuccessorNodeOf method
 			
 			String[] targetHosts = getTargetHosts(key);
 			
@@ -191,7 +205,9 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 		if(!canBeForwarded) {
 			if(!KVStore.containsKey(key))
 				throw new RemoteException("Key not present.");
-			return KVStore.get(key);
+			ValueTimeStamp value = KVStore.get(key);
+			readBuffer.add(new Operation("READ", consistencyLevel, new Date().toString(), key, value.value));
+			return value;
 		}
 
 		try {
@@ -204,7 +220,7 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 				completionService.submit(new LookupThread(targetHosts[i],key,consistencyLevel));
 			}
 			
-			ValueTimeStamp result = waitForReplicaRepliesForUpdate(completionService, consistencyLevel);
+			ValueTimeStamp result = waitForReplicaRepliesForLookup(completionService, consistencyLevel);
 			pool.shutdown();
 			return result;
 		} catch (Exception e) {
@@ -227,6 +243,8 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 				throw new RemoteException("Key not present.");
 			if(KVStore.get(key).timeStamp < value.timeStamp)
 				KVStore.put(key, value);
+			if(consistencyLevel != null)
+				writeBuffer.add(new Operation("UPDATE", consistencyLevel, new Date().toString(), key, value.value));
 			return true;
 		}
 		value.timeStamp = System.currentTimeMillis();
@@ -262,6 +280,8 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 				//throw new RemoteException("Key not present.");
 				return false;
 			KVStore.remove(key);
+			if(consistencyLevel != null)
+				writeBuffer.add(new Operation("DELETE", consistencyLevel, new Date().toString(), key));
 			return true;
 		}
 
@@ -284,6 +304,9 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 		}		
 	}
 
+	/**
+	 * Private api used only by ndoes to remap keys.
+	 */
 	public void lookupAndInsertInto(String hostname, long startKeyRange,
 			long endKeyRange) throws  RemoteException {
 		BoltDBProtocol targetServer = null;
@@ -292,23 +315,17 @@ public class BoltDBServer extends UnicastRemoteObject implements BoltDBProtocol 
 		} catch (Exception e) {
 			log.error(e.getMessage());
 		}
-		System.out.println("lookupAndInsert: start - "+startKeyRange+" end - "+ endKeyRange);
 		for(Entry<Long,ValueTimeStamp> e : KVStore.entrySet()) {
 			try {
 				long hashOfKey = GroupMembership.computeHash(e.getKey().toString());
-				System.out.println("lookupAndInsert: hashOfkey - "+hashOfKey);
 				if (startKeyRange < endKeyRange) {
 					if (hashOfKey >= startKeyRange && hashOfKey <= endKeyRange) {
-						System.out.println("Inserting " + hashOfKey + " from "
-								+ GroupMembership.pid + " to " + hostname);
 						log.info("["+new Date()+"]Inserting " + hashOfKey + " from "
 								+ GroupMembership.pid + " to " + hostname);
 						targetServer.insert(e.getKey(), e.getValue(), false,null);
 					}
 				} else {
 					if (hashOfKey >= startKeyRange || hashOfKey <= endKeyRange) {
-						System.out.println("Inserting " + hashOfKey + " from "
-								+ GroupMembership.pid + " to " + hostname);
 						log.info("["+new Date()+"]Inserting " + hashOfKey + " from "
 									+ GroupMembership.pid + " to " + hostname);
 						targetServer.insert(e.getKey(), e.getValue(), false,null);

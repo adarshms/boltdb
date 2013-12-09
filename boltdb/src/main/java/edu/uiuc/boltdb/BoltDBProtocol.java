@@ -14,7 +14,7 @@ public interface BoltDBProtocol extends Remote {
 	 * The insert api is used to insert a key and a value into the store.
 	 *'canBeForwarded' is a flag to indicate whether the request can be forwarded to
 	 *other servers to perform the operation.
-	 *Throws an exception if key is already present in the store.
+	 *Returns false if key is already present in the store.
 	 * @param key
 	 * @param value
 	 * @param canBeForwarded

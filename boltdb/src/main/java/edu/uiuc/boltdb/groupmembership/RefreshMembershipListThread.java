@@ -60,7 +60,7 @@ public class RefreshMembershipListThread implements Runnable
 			{
 				membershipBean.toBeDeleted = true;
 				if (membershipBean.hearbeatLastReceived > 0) {
-					System.out.println("CRASHED : " + entry.getKey() +" at " + new Date().toString());
+					//System.out.println("CRASHED : " + entry.getKey() +" at " + new Date().toString());
 					log.info("["+new Date()+"]CRASHED - - - " + entry.getKey());
 				}
 			}

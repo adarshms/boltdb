@@ -3,6 +3,7 @@ package edu.uiuc.boltdb.methods;
 import java.net.InetAddress;
 import java.rmi.Naming;
 import java.rmi.RemoteException;
+import java.util.Date;
 import java.util.concurrent.Callable;
 
 import edu.uiuc.boltdb.BoltDBProtocol;
@@ -10,6 +11,7 @@ import edu.uiuc.boltdb.BoltDBServer;
 import edu.uiuc.boltdb.BoltDBProtocol.CONSISTENCY_LEVEL;
 import edu.uiuc.boltdb.ValueTimeStamp;
 import edu.uiuc.boltdb.groupmembership.GroupMembership;
+import edu.uiuc.boltdb.groupmembership.beans.Operation;
 
 public class LookupThread implements Callable<ValueTimeStamp> {
 	private String targetHost;
@@ -31,7 +33,9 @@ public class LookupThread implements Callable<ValueTimeStamp> {
 				if(!BoltDBServer.KVStore.containsKey(key))
 					return null;
 					//throw new RemoteException("Key not present.");
-				return BoltDBServer.KVStore.get(key);
+				ValueTimeStamp value = BoltDBServer.KVStore.get(key);
+				BoltDBServer.readBuffer.add(new Operation("READ", consistencyLevel, new Date().toString(), key, value.value));
+				return value;
 			} else {
 				BoltDBProtocol targetServer = (BoltDBProtocol) Naming
 						.lookup("rmi://"
