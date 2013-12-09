@@ -392,6 +392,9 @@ public class GroupMembership implements Runnable {
 		return predecessorNode;
 	}
 
+	/*
+	 * This method is called by a node to check if its in the successor rereplication segment
+	 */
 	public static int inSuccReReplicationSeg(long thisNode, long failedNode)
 			throws NoSuchAlgorithmException {
 		int k = replicationFactor;
@@ -401,6 +404,10 @@ public class GroupMembership implements Runnable {
 		}
 		return -1;
 	}
+	
+	/*
+	 * This method is called by a node to check if its in the predecessor rereplication segment
+	 */
 
 	public static int inPredReReplicationSeg(long thisNode, long failedNode)
 			throws NoSuchAlgorithmException {
@@ -411,6 +418,10 @@ public class GroupMembership implements Runnable {
 		}
 		return -1;
 	}
+	
+	/*
+	 * This method is used to get the kth successor of a node
+	 */
 
 	public static String getKthSuccessorNode(long aNode, int k)
 			throws NoSuchAlgorithmException {
@@ -421,6 +432,10 @@ public class GroupMembership implements Runnable {
 		}
 		return successorNode;
 	}
+	
+	/*
+	 * This method is called to handle a crash
+	 */
 
 	public synchronized static void handleCrash(long hashCrashedNode)
 			throws NoSuchAlgorithmException, MalformedURLException,
@@ -472,6 +487,9 @@ public class GroupMembership implements Runnable {
 		}
 	}
 
+	/*
+	 * This method gets the kth predecessor of a node
+	 */
 	public static String getKthPredecessorNode(long aNode, int k)
 			throws NoSuchAlgorithmException {
 		String predecessorNode = new String();
