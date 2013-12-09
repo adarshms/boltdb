@@ -110,13 +110,12 @@ public class GroupMembership implements Runnable {
 				pid += "-" + args[3];
 				initializeLogger(args[3]);
 			}
-			
-			//Compute the hashvalue of yourself(server)
+
+			// Compute the hashvalue of yourself(server)
 			long hashValue = computeHash(pid);
-			
-			
+
 			startTime = System.currentTimeMillis();
-			
+
 			// Insert the current machine into the membership list with
 			// heartbeat=1. This single entry is going to be sent to the contact
 			// node for joining the cluster.
@@ -131,9 +130,10 @@ public class GroupMembership implements Runnable {
 			FileInputStream fis = new FileInputStream("./boltdb.prop");
 			prop.load(fis);
 			fis.close();
-			
+
 			// Set the replicaton factor from the properties file
-			replicationFactor = Integer.parseInt(prop.getProperty("groupmembership.rfactor"));
+			replicationFactor = Integer.parseInt(prop
+					.getProperty("groupmembership.rfactor"));
 
 			// Start the thread that listens to gossip messages.
 			Thread receiveGossip = new Thread(new ReceiveGossipThread());
@@ -161,8 +161,7 @@ public class GroupMembership implements Runnable {
 			}
 
 			// Get the tFail from property file
-			tFail = Integer.parseInt(prop
-					.getProperty("groupmembership.tfail"));
+			tFail = Integer.parseInt(prop.getProperty("groupmembership.tfail"));
 
 			// ScheduledExecutorService is used to schedule all the threads
 			// mentioned in the class javadoc with frequency mentioned in
@@ -208,18 +207,6 @@ public class GroupMembership implements Runnable {
 					receiveGossip.stop();
 					scheduler.shutdownNow();
 					scheduler.awaitTermination(100, TimeUnit.MILLISECONDS);
-					//Move your keys to successor
-					/*long myHash = GroupMembership.membershipList.get(GroupMembership.pid).hashValue;
-					String successorHost = GroupMembership.membershipList.get(getSuccessorNode(myHash)).hostname;
-					BoltDBProtocol successorRMIServer = (BoltDBProtocol) Naming.lookup("rmi://" + successorHost + "/KVStore");
-					Iterator<Entry<Long,ValueTimeStamp>> itr = BoltDBServer.KVStore.entrySet().iterator();
-					
-					while(itr.hasNext()) {
-						Entry<Long,ValueTimeStamp> entry = itr.next();
-						successorRMIServer.insert(entry.getKey(), entry.getValue(), false,null);
-					}
-					BoltDBServer.KVStore.clear();
-					*/
 					MembershipBean mBean = membershipList.get(pid);
 					mBean.hearbeatLastReceived = -1;
 					mBean.timeStamp = System.currentTimeMillis();
@@ -230,80 +217,95 @@ public class GroupMembership implements Runnable {
 					break;
 				}
 				/*
-				 * The show command prints the current membershipList entries and the current KVStore
-				 * entries on the console.
+				 * The show command prints the current membershipList entries
+				 * and the current KVStore entries on the console.
 				 */
-				else if(commandString.equals("shownodes")) {
-					System.out.println("-------------------------------------------------");
+				else if (commandString.equals("shownodes")) {
+					System.out
+							.println("-------------------------------------------------");
 					System.out.println("Membership List : ");
-					System.out.println("-------------------------------------------------");
-					for (Map.Entry<String, MembershipBean> entry : membershipList.entrySet())
-					{
-						System.out.println(entry.getValue().hostname + "     " + entry.getValue().hashValue);
+					System.out
+							.println("-------------------------------------------------");
+					for (Map.Entry<String, MembershipBean> entry : membershipList
+							.entrySet()) {
+						System.out.println(entry.getValue().hostname + "     "
+								+ entry.getValue().hashValue);
 					}
-					System.out.println("-------------------------------------------------");
+					System.out
+							.println("-------------------------------------------------");
 					System.out.println();
-				}
-				else if(commandString.equals("showKV")) {
-					System.out.println("-------------------------------------------------");
+				} else if (commandString.equals("showKV")) {
+					System.out
+							.println("-------------------------------------------------");
 					System.out.println("Key Value Store : ");
-					System.out.println("-------------------------------------------------");
-					long myHash = GroupMembership.membershipList.get(GroupMembership.pid).hashValue;
-					long myPredecessor = GroupMembership.membershipList.get(GroupMembership.getPredecessorNode(myHash)).hashValue;
-					int primaryCount=0,replicaCount=0;
-					for (Map.Entry<Long, ValueTimeStamp> entry : BoltDBServer.KVStore.entrySet())
-					{
-						long hashOfKey = computeHash((new Long(entry.getKey())).toString());
-					    System.out.print(entry.getKey() + " ---> " + entry.getValue() + "   |   Hash of Key - " + hashOfKey + "   ");
-					    if(myHash > myPredecessor) {
-					    	if(hashOfKey > myPredecessor && hashOfKey <= myHash) {
-					    		System.out.println("Primary");
-					    		primaryCount++;
-					    	}
-					    	else {
-						    	System.out.println("Replica");
-						    	replicaCount++;
-					    	}
-					    }
-					    else {
-					    	if(hashOfKey > myPredecessor || hashOfKey <= myHash) {
-					    		System.out.println("Primary");
-					    		primaryCount++;
-					    	}
-					    	else {
-						    	System.out.println("Replica");
-						    	replicaCount++;
-					    	}
-					    }
+					System.out
+							.println("-------------------------------------------------");
+					long myHash = GroupMembership.membershipList
+							.get(GroupMembership.pid).hashValue;
+					long myPredecessor = GroupMembership.membershipList
+							.get(GroupMembership.getPredecessorNode(myHash)).hashValue;
+					int primaryCount = 0, replicaCount = 0;
+					for (Map.Entry<Long, ValueTimeStamp> entry : BoltDBServer.KVStore
+							.entrySet()) {
+						long hashOfKey = computeHash((new Long(entry.getKey()))
+								.toString());
+						System.out.print(entry.getKey() + " ---> "
+								+ entry.getValue() + "   |   Hash of Key - "
+								+ hashOfKey + "   ");
+						if (myHash > myPredecessor) {
+							if (hashOfKey > myPredecessor
+									&& hashOfKey <= myHash) {
+								System.out.println("Primary");
+								primaryCount++;
+							} else {
+								System.out.println("Replica");
+								replicaCount++;
+							}
+						} else {
+							if (hashOfKey > myPredecessor
+									|| hashOfKey <= myHash) {
+								System.out.println("Primary");
+								primaryCount++;
+							} else {
+								System.out.println("Replica");
+								replicaCount++;
+							}
+						}
 					}
-					System.out.println("-------------------------------------------------");
-					System.out.println("Primary - " + primaryCount + " Replicas - " + replicaCount + " Total - " + (primaryCount+replicaCount));
+					System.out
+							.println("-------------------------------------------------");
+					System.out.println("Primary - " + primaryCount
+							+ " Replicas - " + replicaCount + " Total - "
+							+ (primaryCount + replicaCount));
 					System.out.println();
-				}
-				else if(commandString.equals("ring")) {
-					System.out.println("-------------------------------------------------");
+				} else if (commandString.equals("ring")) {
+					System.out
+							.println("-------------------------------------------------");
 					System.out.println("Node Ring : ");
 					int noOfNodes = membershipList.size();
 					long node = computeHash(this.pid);
-					while(noOfNodes-- > 0) {
+					while (noOfNodes-- > 0) {
 						System.out.print(node + " --> ");
 						node = computeHash(getSuccessorNode(node));
 					}
 					System.out.println("looparound");
-					System.out.println("-------------------------------------------------");
+					System.out
+							.println("-------------------------------------------------");
 					System.out.println();
-				} else if(commandString.equals("show")) {
-					System.out.println("-------------------------------------------------");
+				} else if (commandString.equals("show")) {
+					System.out
+							.println("-------------------------------------------------");
 					System.out.println("RECENT READS");
 					Iterator itr = BoltDBServer.readBuffer.iterator();
-					while(itr.hasNext()) {
-						System.out.println((Operation)itr.next());
+					while (itr.hasNext()) {
+						System.out.println((Operation) itr.next());
 					}
-					System.out.println("-------------------------------------------------");
+					System.out
+							.println("-------------------------------------------------");
 					System.out.println("RECENT WRITES");
 					itr = BoltDBServer.writeBuffer.iterator();
-					while(itr.hasNext()) {
-						System.out.println((Operation)itr.next());
+					while (itr.hasNext()) {
+						System.out.println((Operation) itr.next());
 					}
 				}
 			}
@@ -312,163 +314,168 @@ public class GroupMembership implements Runnable {
 		}
 
 	}
-	
+
 	/**
-	 * Computes the MD5 hash of the pid,transforms it into an integer
-	 * and hashes it in the range 0-1 million.
+	 * Computes the MD5 hash of the pid,transforms it into an integer and hashes
+	 * it in the range 0-1 million.
+	 * 
 	 * @param pid
 	 * @return
 	 * @throws NoSuchAlgorithmException
 	 */
 	public static long computeHash(String pid) throws NoSuchAlgorithmException {
-		if(pid.length() <= 6 && !pid.isEmpty())
+		if (pid.length() <= 6 && !pid.isEmpty())
 			return Long.parseLong(pid);
-		
+
 		MessageDigest md = MessageDigest.getInstance("MD5");
 		BigInteger bigInt = new BigInteger(1, md.digest(pid.getBytes()));
 		return Math.abs(bigInt.longValue()) % 1000001L;
 	}
-	
+
 	/**
 	 * Returns the node which is the successor of a key.
+	 * 
 	 * @param keyHash
 	 * @return
 	 */
 	public static String getSuccessorNode(long aNode) {
-		Iterator<Entry<String,MembershipBean>> itr = GroupMembership.membershipList.entrySet().iterator();
-		//Set the minimum clockwise distance to be  maximum possible value
+		Iterator<Entry<String, MembershipBean>> itr = GroupMembership.membershipList
+				.entrySet().iterator();
+		// Set the minimum clockwise distance to be maximum possible value
 		long minClockwiseDistance = 1000000L;
 		String successorNode = new String();
-		while(itr.hasNext()) {
-			Entry<String,MembershipBean> entry = itr.next();
-			//Ignore if the entry is yourself(Server)
-			if(entry.getValue().hashValue == aNode) continue;
+		while (itr.hasNext()) {
+			Entry<String, MembershipBean> entry = itr.next();
+			// Ignore if the entry is yourself(Server)
+			if (entry.getValue().hashValue == aNode)
+				continue;
 			long hashCurrent = entry.getValue().hashValue;
-			//compute the clockwise distance
-			long clockWiseDistance = aNode > hashCurrent ? 1000000l - (aNode - hashCurrent) : hashCurrent - aNode;
-			//Update minimum clockwise distance if required
-			if(minClockwiseDistance > clockWiseDistance) {
+			// compute the clockwise distance
+			long clockWiseDistance = aNode > hashCurrent ? 1000000l - (aNode - hashCurrent)
+					: hashCurrent - aNode;
+			// Update minimum clockwise distance if required
+			if (minClockwiseDistance > clockWiseDistance) {
 				minClockwiseDistance = clockWiseDistance;
 				successorNode = entry.getKey();
 			}
 		}
 		return successorNode;
 	}
-	
-	
+
 	/**
 	 * Returns the node which is the predecessor of a key.
+	 * 
 	 * @param keyHash
 	 * @return
 	 */
 	public static String getPredecessorNode(long aNode) {
-		Iterator<Entry<String,MembershipBean>> itr = GroupMembership.membershipList.entrySet().iterator();
-		//Set the maximum clockwise distance to be  minimum possible value
+		Iterator<Entry<String, MembershipBean>> itr = GroupMembership.membershipList
+				.entrySet().iterator();
+		// Set the maximum clockwise distance to be minimum possible value
 		long maxClockwiseDistance = 0L;
 		String predecessorNode = new String();
-		while(itr.hasNext()) {
-			Entry<String,MembershipBean> entry = itr.next();
-			//Ignore if the entry is yourself(Server)
-			if(entry.getValue().hashValue == aNode) continue;
+		while (itr.hasNext()) {
+			Entry<String, MembershipBean> entry = itr.next();
+			// Ignore if the entry is yourself(Server)
+			if (entry.getValue().hashValue == aNode)
+				continue;
 			long hashCurrent = entry.getValue().hashValue;
-			//compute the clockwise distance
-			long clockWiseDistance = aNode > hashCurrent ? 1000000L - (aNode - hashCurrent) : hashCurrent - aNode;
-			//Update minimum clockwise distance if required
-			if(maxClockwiseDistance < clockWiseDistance) {
+			// compute the clockwise distance
+			long clockWiseDistance = aNode > hashCurrent ? 1000000L - (aNode - hashCurrent)
+					: hashCurrent - aNode;
+			// Update minimum clockwise distance if required
+			if (maxClockwiseDistance < clockWiseDistance) {
 				maxClockwiseDistance = clockWiseDistance;
 				predecessorNode = entry.getKey();
 			}
 		}
 		return predecessorNode;
 	}
-	
-	public static int inSuccReReplicationSeg(long thisNode, long failedNode) throws NoSuchAlgorithmException
-	{
+
+	public static int inSuccReReplicationSeg(long thisNode, long failedNode)
+			throws NoSuchAlgorithmException {
 		int k = replicationFactor;
-		while(k-- > 0) {
-			if((failedNode=computeHash(getSuccessorNode(failedNode))) == thisNode)
+		while (k-- > 0) {
+			if ((failedNode = computeHash(getSuccessorNode(failedNode))) == thisNode)
 				return (replicationFactor - k);
 		}
 		return -1;
 	}
-	
-	public static int inPredReReplicationSeg(long thisNode, long failedNode) throws NoSuchAlgorithmException
-	{
+
+	public static int inPredReReplicationSeg(long thisNode, long failedNode)
+			throws NoSuchAlgorithmException {
 		int k = replicationFactor;
-		while(k-- > 1) {
-			if((failedNode=computeHash(getPredecessorNode(failedNode))) == thisNode)
+		while (k-- > 1) {
+			if ((failedNode = computeHash(getPredecessorNode(failedNode))) == thisNode)
 				return (replicationFactor - k);
 		}
 		return -1;
 	}
-	
-	public static String getKthSuccessorNode(long aNode, int k) throws NoSuchAlgorithmException
-	{
+
+	public static String getKthSuccessorNode(long aNode, int k)
+			throws NoSuchAlgorithmException {
 		String successorNode = new String();
-		while(k-- > 0)
-		{
+		while (k-- > 0) {
 			successorNode = getSuccessorNode(aNode);
 			aNode = computeHash(successorNode);
 		}
 		return successorNode;
 	}
-	
-	
+
 	public synchronized static void handleCrash(long hashCrashedNode)
 			throws NoSuchAlgorithmException, MalformedURLException,
 			NotBoundException {
-		//TODO doesnt work for k=1,2; && need to compute hash of keys before comparing at all places
-		if(membershipList.size() <= 3) return;
+		if (membershipList.size() <= 3)
+			return;
 		long myhash = membershipList.get(GroupMembership.pid).hashValue;
-		int successorPosition = inSuccReReplicationSeg(myhash,hashCrashedNode);
+		int successorPosition = inSuccReReplicationSeg(myhash, hashCrashedNode);
 		if (successorPosition != -1) {
-			//System.out.println("successor position:"+successorPosition);
 			long startKey, endKey;
 			String targetNode;
-			if(successorPosition == 3) {
-				startKey = membershipList.get(getPredecessorNode(hashCrashedNode)).hashValue + 1;
+			if (successorPosition == replicationFactor) {
+				startKey = membershipList
+						.get(getPredecessorNode(hashCrashedNode)).hashValue + 1;
 				endKey = hashCrashedNode;
 				targetNode = getSuccessorNode(hashCrashedNode);
-			}
-			else {
-				targetNode = getKthPredecessorNode(hashCrashedNode, replicationFactor - successorPosition);
-				startKey = membershipList.get(getPredecessorNode(membershipList.get(targetNode).hashValue)).hashValue + 1;
+			} else {
+				targetNode = getKthPredecessorNode(hashCrashedNode,
+						replicationFactor - successorPosition);
+				startKey = membershipList.get(getPredecessorNode(membershipList
+						.get(targetNode).hashValue)).hashValue + 1;
 				endKey = membershipList.get(targetNode).hashValue;
 			}
-			
-			//System.out.println("startkey:"+startKey+ " endKey:"+endKey+" targetNode:"+targetNode);
+
 			BoltDBProtocol targetRMIServer = null;
 			int i = 0;
 			while (i++ < replicationFactor - 1) {
 				try {
-					//System.out.println("trying to connect to targetNode pid :"+targetNode+" with hostname :"+ membershipList.get(targetNode).hostname );
 					targetRMIServer = (BoltDBProtocol) Naming.lookup("rmi://"
-							+ membershipList.get(targetNode).hostname + "/KVStore");
-					targetRMIServer.lookupAndInsertInto(membershipList.get(pid).hostname, startKey, endKey);
+							+ membershipList.get(targetNode).hostname
+							+ "/KVStore");
+					targetRMIServer.lookupAndInsertInto(
+							membershipList.get(pid).hostname, startKey, endKey);
 					break;
 				} catch (RemoteException e1) {
-					System.out.println("Exception while connecting to "+targetNode+ " "+e1.getMessage());
+					System.out.println("Exception while connecting to "
+							+ targetNode + " " + e1.getMessage());
 					targetNode = getSuccessorNode(GroupMembership.membershipList
 							.get(targetNode).hashValue);
 					continue;
 				}
 			}
-			
-			if(targetRMIServer == null) {
+
+			if (targetRMIServer == null) {
 				System.out.println("Problem replicating keys during crash");
 				log.error("Problem replicating keys during crash");
 				return;
 			}
 		}
 	}
-	
 
-
-	public static String getKthPredecessorNode(long aNode, int k) throws NoSuchAlgorithmException
-	{
+	public static String getKthPredecessorNode(long aNode, int k)
+			throws NoSuchAlgorithmException {
 		String predecessorNode = new String();
-		while(k-- > 0)
-		{
+		while (k-- > 0) {
 			predecessorNode = getPredecessorNode(aNode);
 			aNode = computeHash(predecessorNode);
 		}

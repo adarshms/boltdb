@@ -2,7 +2,6 @@ package edu.uiuc.boltdb.methods;
 
 import java.net.InetAddress;
 import java.rmi.Naming;
-import java.rmi.RemoteException;
 import java.util.Date;
 import java.util.concurrent.Callable;
 
