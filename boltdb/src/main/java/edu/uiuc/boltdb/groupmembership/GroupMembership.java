@@ -4,9 +4,21 @@ import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.math.BigInteger;
 import java.net.InetAddress;
+import java.net.MalformedURLException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.rmi.Naming;
+import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Properties;
+import java.util.Map.Entry;
+import java.util.StringTokenizer;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -17,48 +29,59 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
 
+import edu.uiuc.boltdb.*;
 import edu.uiuc.boltdb.groupmembership.beans.*;
 
-/**This class is the entry point for Distributed Group Membership.
- * It takes two arguments - 
- * 1) -contact <true/false> : true if its the contact machine,false otherwise
- * 2) -id <machine-id> : this is an argument to identify a machine and will be used to name its log file
+/**
+ * This class is the entry point for Distributed Group Membership. It takes two
+ * arguments - 1) -contact <true/false> : true if its the contact machine,false
+ * otherwise 2) -id <machine-id> : this is an argument to identify a machine and
+ * will be used to name its log file
  * 
- * Data structures :
- * The membership list is maintained inside a ConcurrentHashMap<String,MembershipBean>.
- * There are two advantages of doing this : 
- * 	1. Thread Safety : Both read/write on the membership list is thread safe.
- *  2. Fast : only a portion of the map is locked while writing into it and not the whole map.
- *  		  This means other READ threads can continue accessing the map while another writes to it.
- *  
- * Parameters : 
- * This class needs 6 parameters to function and all of these come from a property file boltdb.prop.
- * The parameters are contact hostname,gossip frequency, heartbeat increment frequency, tfail, refresh membership list frequency, lossrate(for 4th credit). 
+ * Data structures : The membership list is maintained inside a
+ * ConcurrentHashMap<String,MembershipBean>. There are two advantages of doing
+ * this : 1. Thread Safety : Both read/write on the membership list is thread
+ * safe. 2. Fast : only a portion of the map is locked while writing into it and
+ * not the whole map. This means other READ threads can continue accessing the
+ * map while another writes to it.
  * 
- * The class initializes and starts the following threads :
- * 1. ReceiveGossipThread
- * 2. HeartbeatIncrementerThread
- * 3. RefreshMembershipListThread
- * 4. SendGossipThread
+ * Parameters : This class needs 6 parameters to function and all of these come
+ * from a property file boltdb.prop. The parameters are contact hostname,gossip
+ * frequency, heartbeat increment frequency, tfail, refresh membership list
+ * frequency, lossrate(for 4th credit).
  * 
- * More detils about each of the thread can be found in the javadoc of its class.
+ * The class initializes and starts the following threads : 1.
+ * ReceiveGossipThread 2. HeartbeatIncrementerThread 3.
+ * RefreshMembershipListThread 4. SendGossipThread
+ * 
+ * More detils about each of the thread can be found in the javadoc of its
+ * class.
+ * 
  * @author ashwin(ashanka2)
- *
+ * 
  */
-public class GroupMembership 
-{
+public class GroupMembership implements Runnable {
 	private static org.apache.log4j.Logger log = Logger.getRootLogger();
-	public static ConcurrentHashMap<String,MembershipBean> membershipList = new ConcurrentHashMap<String,MembershipBean>();
+	public static volatile ConcurrentHashMap<String, MembershipBean> membershipList = new ConcurrentHashMap<String, MembershipBean>();
 	public static String pid = new String();
+	public static long startTime;
 	public static String pidDelimiter = "--";
 	public static long bandwidth = 0;
-	
+	public static int replicationFactor = 1;
+	private String[] args;
+	public static int tFail = 3;
+
+	public GroupMembership(String args[]) {
+		this.args = args;
+	}
+
 	/**
-	 * Initialize the logger. Set the name of the log file with the machineid passed as parameter.
+	 * Initialize the logger. Set the name of the log file with the machineid
+	 * passed as parameter.
+	 * 
 	 * @param serverId
 	 */
-	public static void initializeLogger(String serverId)
-	{
+	public static void initializeLogger(String serverId) {
 		FileAppender fa = new FileAppender();
 		fa.setName("FileLogger");
 		fa.setFile(serverId + ".log");
@@ -68,88 +91,412 @@ public class GroupMembership
 		fa.activateOptions();
 		log.addAppender(fa);
 	}
-	
-	public static void main(String[] args) throws IOException, InterruptedException 
-	{
-		//Command line parsing
-		if(args.length < 1 || !(args[0].equals("-contact"))) 
-		{
-			System.out.println("Usage: groupmembership -contact <true/false> [-id <id>]");
+
+	public void run() {
+		// Command line parsing
+		if (args.length < 1 || !(args[0].equals("-contact"))) {
+			System.out
+					.println("Usage: groupmembership -contact <true/false> [-id <id>]");
 			System.exit(1);
 		}
-		
+
 		boolean isContact = false;
-		if(args[1].equals("true")) 
+		if (args[1].equals("true"))
 			isContact = true;
-		
-		pid += InetAddress.getLocalHost().getHostName() + GroupMembership.pidDelimiter + (new Date().toString());
-		if (args.length > 2 && args[2].equals("-id"))
-		{
-			pid += "-" + args[3];
-			initializeLogger(args[3]);
-		}
-		
-		//Insert the current machine into the membership list with heartbeat=1. This single entry is going to be sent to the contact node for joining the cluster. 
-		GroupMembership.membershipList.putIfAbsent(GroupMembership.pid, new MembershipBean(InetAddress.getLocalHost().getHostName(), 1, System.currentTimeMillis(), false));
-		
-		//Load all the paramters needed from the property file.
-		Properties prop = new Properties();
-		FileInputStream fis = new FileInputStream("./boltdb.prop");
-		prop.load(fis);
-		fis.close();
-		
-		//Start the thread that listens to gossip messages.
-		Thread receiveGossip = new Thread(new ReceiveGossipThread());
-		receiveGossip.start();
-		
-		//JOINING : This is the JOIN part . So,if this node is not the contact machine,then try to connect to the contact machine
-		//and send your membership list which contains just one entry ie current machine's details.
-		if (!isContact) 
-		{
-			int maxTries = 10;
-			while(maxTries-- > 0)
-			{
-				new SendMembershipListThread(prop.getProperty("groupmembership.contact"), 8764).start();
-				try {
-					Thread.sleep(1000);
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+		try {
+			pid += InetAddress.getLocalHost().getHostName()
+					+ GroupMembership.pidDelimiter + (new Date().toString());
+			if (args.length > 2 && args[2].equals("-id")) {
+				pid += "-" + args[3];
+				initializeLogger(args[3]);
+			}
+
+			// Compute the hashvalue of yourself(server)
+			long hashValue = computeHash(pid);
+
+			startTime = System.currentTimeMillis();
+
+			// Insert the current machine into the membership list with
+			// heartbeat=1. This single entry is going to be sent to the contact
+			// node for joining the cluster.
+			GroupMembership.membershipList.putIfAbsent(
+					GroupMembership.pid,
+					new MembershipBean(
+							InetAddress.getLocalHost().getHostName(), 1, System
+									.currentTimeMillis(), hashValue, false));
+
+			// Load all the parameters needed from the property file.
+			Properties prop = new Properties();
+			FileInputStream fis = new FileInputStream("./boltdb.prop");
+			prop.load(fis);
+			fis.close();
+
+			// Set the replicaton factor from the properties file
+			replicationFactor = Integer.parseInt(prop
+					.getProperty("groupmembership.rfactor"));
+
+			// Start the thread that listens to gossip messages.
+			Thread receiveGossip = new Thread(new ReceiveGossipThread());
+			receiveGossip.start();
+
+			// JOINING : This is the JOIN part . So,if this node is not the
+			// contact machine,then try to connect to the contact machine
+			// and send your membership list which contains just one entry ie
+			// current machine's details.
+			if (!isContact) {
+				int maxTries = 10;
+				while (maxTries-- > 0) {
+					new SendMembershipListThread(
+							prop.getProperty("groupmembership.contact"), 8764)
+							.start();
+					try {
+						Thread.sleep(1000);
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					if (GroupMembership.membershipList.size() > 1)
+						break;
 				}
-				if(GroupMembership.membershipList.size() > 1) break;
+			}
+
+			// Get the tFail from property file
+			tFail = Integer.parseInt(prop.getProperty("groupmembership.tfail"));
+
+			// ScheduledExecutorService is used to schedule all the threads
+			// mentioned in the class javadoc with frequency mentioned in
+			// property file
+			ScheduledExecutorService scheduler = Executors
+					.newSingleThreadScheduledExecutor();
+			scheduler.scheduleAtFixedRate(new HeartbeatIncrementerThread(), 0,
+					Integer.parseInt(prop
+							.getProperty("groupmembership.heartbeat.freq")),
+					TimeUnit.MILLISECONDS);
+			scheduler
+					.scheduleAtFixedRate(
+							new RefreshMembershipListThread(tFail),
+							0,
+							Integer.parseInt(prop
+									.getProperty("groupmembership.refreshMembershipList.freq")),
+							TimeUnit.MILLISECONDS);
+			scheduler.scheduleAtFixedRate(
+					new SendGossipThread(Integer.parseInt(prop
+							.getProperty("groupmembership.lossrate"))), 0,
+					Integer.parseInt(prop
+							.getProperty("groupmembership.gossip.freq")),
+					TimeUnit.MILLISECONDS);
+			// scheduler.scheduleAtFixedRate(new LogBandwidthThread(), 0, 60000,
+			// TimeUnit.MILLISECONDS);
+
+			// VOLUTARY LEAVE : This is the code for voluntary leave part.
+			// Basically we wait for user to input the string "leave".
+			// Once the user enters "leave",all the threads are stopped. The
+			// heartbeat of the current node is set to -1 and
+			// one last gossip happens.
+			// Please note that we don't send the last message to everyone in
+			// the list.
+			BufferedReader bufferRead = new BufferedReader(
+					new InputStreamReader(System.in));
+			while (true) {
+				// Read user's input
+				System.out.print("boltdb-server>");
+				String commandString = bufferRead.readLine();
+				if (commandString.equals(""))
+					continue;
+				if (commandString.equals("leave")) {
+					receiveGossip.stop();
+					scheduler.shutdownNow();
+					scheduler.awaitTermination(100, TimeUnit.MILLISECONDS);
+					MembershipBean mBean = membershipList.get(pid);
+					mBean.hearbeatLastReceived = -1;
+					mBean.timeStamp = System.currentTimeMillis();
+					membershipList.put(pid, mBean);
+					Thread gossipOneLastTime = new Thread(new SendGossipThread(
+							0));
+					gossipOneLastTime.start();
+					break;
+				}
+				/*
+				 * The show command prints the current membershipList entries
+				 * and the current KVStore entries on the console.
+				 */
+				else if (commandString.equals("shownodes")) {
+					System.out
+							.println("-------------------------------------------------");
+					System.out.println("Membership List : ");
+					System.out
+							.println("-------------------------------------------------");
+					for (Map.Entry<String, MembershipBean> entry : membershipList
+							.entrySet()) {
+						System.out.println(entry.getValue().hostname + "     "
+								+ entry.getValue().hashValue);
+					}
+					System.out
+							.println("-------------------------------------------------");
+					System.out.println();
+				} else if (commandString.equals("showKV")) {
+					System.out
+							.println("-------------------------------------------------");
+					System.out.println("Key Value Store : ");
+					System.out
+							.println("-------------------------------------------------");
+					long myHash = GroupMembership.membershipList
+							.get(GroupMembership.pid).hashValue;
+					long myPredecessor = GroupMembership.membershipList
+							.get(GroupMembership.getPredecessorNode(myHash)).hashValue;
+					int primaryCount = 0, replicaCount = 0;
+					for (Map.Entry<Long, ValueTimeStamp> entry : BoltDBServer.KVStore
+							.entrySet()) {
+						long hashOfKey = computeHash((new Long(entry.getKey()))
+								.toString());
+						System.out.print(entry.getKey() + " ---> "
+								+ entry.getValue() + "   |   Hash of Key - "
+								+ hashOfKey + "   ");
+						if (myHash > myPredecessor) {
+							if (hashOfKey > myPredecessor
+									&& hashOfKey <= myHash) {
+								System.out.println("Primary");
+								primaryCount++;
+							} else {
+								System.out.println("Replica");
+								replicaCount++;
+							}
+						} else {
+							if (hashOfKey > myPredecessor
+									|| hashOfKey <= myHash) {
+								System.out.println("Primary");
+								primaryCount++;
+							} else {
+								System.out.println("Replica");
+								replicaCount++;
+							}
+						}
+					}
+					System.out
+							.println("-------------------------------------------------");
+					System.out.println("Primary - " + primaryCount
+							+ " Replicas - " + replicaCount + " Total - "
+							+ (primaryCount + replicaCount));
+					System.out.println();
+				} else if (commandString.equals("ring")) {
+					System.out
+							.println("-------------------------------------------------");
+					System.out.println("Node Ring : ");
+					int noOfNodes = membershipList.size();
+					long node = computeHash(this.pid);
+					while (noOfNodes-- > 0) {
+						System.out.print(node + " --> ");
+						node = computeHash(getSuccessorNode(node));
+					}
+					System.out.println("looparound");
+					System.out
+							.println("-------------------------------------------------");
+					System.out.println();
+				} else if (commandString.equals("show")) {
+					System.out
+							.println("-------------------------------------------------");
+					System.out.println("RECENT READS");
+					Iterator itr = BoltDBServer.readBuffer.iterator();
+					while (itr.hasNext()) {
+						System.out.println((Operation) itr.next());
+					}
+					System.out
+							.println("-------------------------------------------------");
+					System.out.println("RECENT WRITES");
+					itr = BoltDBServer.writeBuffer.iterator();
+					while (itr.hasNext()) {
+						System.out.println((Operation) itr.next());
+					}
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+	}
+
+	/**
+	 * Computes the MD5 hash of the pid,transforms it into an integer and hashes
+	 * it in the range 0-1 million.
+	 * 
+	 * @param pid
+	 * @return
+	 * @throws NoSuchAlgorithmException
+	 */
+	public static long computeHash(String pid) throws NoSuchAlgorithmException {
+		if (pid.length() <= 6 && !pid.isEmpty())
+			return Long.parseLong(pid);
+
+		MessageDigest md = MessageDigest.getInstance("MD5");
+		BigInteger bigInt = new BigInteger(1, md.digest(pid.getBytes()));
+		return Math.abs(bigInt.longValue()) % 1000001L;
+	}
+
+	/**
+	 * Returns the node which is the successor of a key.
+	 * 
+	 * @param keyHash
+	 * @return
+	 */
+	public static String getSuccessorNode(long aNode) {
+		Iterator<Entry<String, MembershipBean>> itr = GroupMembership.membershipList
+				.entrySet().iterator();
+		// Set the minimum clockwise distance to be maximum possible value
+		long minClockwiseDistance = 1000000L;
+		String successorNode = new String();
+		while (itr.hasNext()) {
+			Entry<String, MembershipBean> entry = itr.next();
+			// Ignore if the entry is yourself(Server)
+			if (entry.getValue().hashValue == aNode)
+				continue;
+			long hashCurrent = entry.getValue().hashValue;
+			// compute the clockwise distance
+			long clockWiseDistance = aNode > hashCurrent ? 1000000l - (aNode - hashCurrent)
+					: hashCurrent - aNode;
+			// Update minimum clockwise distance if required
+			if (minClockwiseDistance > clockWiseDistance) {
+				minClockwiseDistance = clockWiseDistance;
+				successorNode = entry.getKey();
 			}
 		}
-		
-		//Get the tFail from property file
-		int tFail = Integer.parseInt(prop.getProperty("groupmembership.tfail"));
-		
-		//ScheduledExecutorService is used to schedule all the threads mentioned in the class javadoc with frequency mentioned in property file
-		ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
-		scheduler.scheduleAtFixedRate(new HeartbeatIncrementerThread(), 0, Integer.parseInt(prop.getProperty("groupmembership.heartbeat.freq")), TimeUnit.MILLISECONDS);
-		scheduler.scheduleAtFixedRate(new RefreshMembershipListThread(tFail), 0, Integer.parseInt(prop.getProperty("groupmembership.refreshMembershipList.freq")), TimeUnit.MILLISECONDS);
-		scheduler.scheduleAtFixedRate(new SendGossipThread(Integer.parseInt(prop.getProperty("groupmembership.lossrate"))), 0, Integer.parseInt(prop.getProperty("groupmembership.gossip.freq")), TimeUnit.MILLISECONDS);
-		//scheduler.scheduleAtFixedRate(new LogBandwidthThread(), 0, 60000, TimeUnit.MILLISECONDS);
+		return successorNode;
+	}
 
-		//VOLUTARY LEAVE : This is the code for voluntary leave part. Basically we wait for user to input the string "leave".
-		//Once the user enters "leave",all the threads are stopped. The heartbeat of the current node is set to -1 and 
-		//one last gossip happens.
-		//Please note that we don't send the last message to everyone in the list. 
-		BufferedReader bufferRead = new BufferedReader(new InputStreamReader(System.in));
-		while(true) {
-			String s = bufferRead.readLine();
-			if(s.equals("leave")) {
-				receiveGossip.stop();
-				scheduler.shutdownNow();
-				scheduler.awaitTermination(100, TimeUnit.MILLISECONDS);
-				MembershipBean mBean = membershipList.get(pid);
-				mBean.hearbeatLastReceived = -1;
-				mBean.timeStamp = System.currentTimeMillis();
-				membershipList.put(pid, mBean);
-				Thread gossipOneLastTime = new Thread(new SendGossipThread(0));
-				gossipOneLastTime.start();
-				break;
+	/**
+	 * Returns the node which is the predecessor of a key.
+	 * 
+	 * @param keyHash
+	 * @return
+	 */
+	public static String getPredecessorNode(long aNode) {
+		Iterator<Entry<String, MembershipBean>> itr = GroupMembership.membershipList
+				.entrySet().iterator();
+		// Set the maximum clockwise distance to be minimum possible value
+		long maxClockwiseDistance = 0L;
+		String predecessorNode = new String();
+		while (itr.hasNext()) {
+			Entry<String, MembershipBean> entry = itr.next();
+			// Ignore if the entry is yourself(Server)
+			if (entry.getValue().hashValue == aNode)
+				continue;
+			long hashCurrent = entry.getValue().hashValue;
+			// compute the clockwise distance
+			long clockWiseDistance = aNode > hashCurrent ? 1000000L - (aNode - hashCurrent)
+					: hashCurrent - aNode;
+			// Update minimum clockwise distance if required
+			if (maxClockwiseDistance < clockWiseDistance) {
+				maxClockwiseDistance = clockWiseDistance;
+				predecessorNode = entry.getKey();
 			}
 		}
+		return predecessorNode;
+	}
 
+	/*
+	 * This method is called by a node to check if its in the successor rereplication segment
+	 */
+	public static int inSuccReReplicationSeg(long thisNode, long failedNode)
+			throws NoSuchAlgorithmException {
+		int k = replicationFactor;
+		while (k-- > 0) {
+			if ((failedNode = computeHash(getSuccessorNode(failedNode))) == thisNode)
+				return (replicationFactor - k);
+		}
+		return -1;
+	}
+	
+	/*
+	 * This method is called by a node to check if its in the predecessor rereplication segment
+	 */
+
+	public static int inPredReReplicationSeg(long thisNode, long failedNode)
+			throws NoSuchAlgorithmException {
+		int k = replicationFactor;
+		while (k-- > 1) {
+			if ((failedNode = computeHash(getPredecessorNode(failedNode))) == thisNode)
+				return (replicationFactor - k);
+		}
+		return -1;
+	}
+	
+	/*
+	 * This method is used to get the kth successor of a node
+	 */
+
+	public static String getKthSuccessorNode(long aNode, int k)
+			throws NoSuchAlgorithmException {
+		String successorNode = new String();
+		while (k-- > 0) {
+			successorNode = getSuccessorNode(aNode);
+			aNode = computeHash(successorNode);
+		}
+		return successorNode;
+	}
+	
+	/*
+	 * This method is called to handle a crash
+	 */
+
+	public synchronized static void handleCrash(long hashCrashedNode)
+			throws NoSuchAlgorithmException, MalformedURLException,
+			NotBoundException {
+		if (membershipList.size() <= 3)
+			return;
+		long myhash = membershipList.get(GroupMembership.pid).hashValue;
+		int successorPosition = inSuccReReplicationSeg(myhash, hashCrashedNode);
+		if (successorPosition != -1) {
+			long startKey, endKey;
+			String targetNode;
+			if (successorPosition == replicationFactor) {
+				startKey = membershipList
+						.get(getPredecessorNode(hashCrashedNode)).hashValue + 1;
+				endKey = hashCrashedNode;
+				targetNode = getSuccessorNode(hashCrashedNode);
+			} else {
+				targetNode = getKthPredecessorNode(hashCrashedNode,
+						replicationFactor - successorPosition);
+				startKey = membershipList.get(getPredecessorNode(membershipList
+						.get(targetNode).hashValue)).hashValue + 1;
+				endKey = membershipList.get(targetNode).hashValue;
+			}
+
+			BoltDBProtocol targetRMIServer = null;
+			int i = 0;
+			while (i++ < replicationFactor - 1) {
+				try {
+					targetRMIServer = (BoltDBProtocol) Naming.lookup("rmi://"
+							+ membershipList.get(targetNode).hostname
+							+ "/KVStore");
+					targetRMIServer.lookupAndInsertInto(
+							membershipList.get(pid).hostname, startKey, endKey);
+					break;
+				} catch (RemoteException e1) {
+					System.out.println("Exception while connecting to "
+							+ targetNode + " " + e1.getMessage());
+					targetNode = getSuccessorNode(GroupMembership.membershipList
+							.get(targetNode).hashValue);
+					continue;
+				}
+			}
+
+			if (targetRMIServer == null) {
+				System.out.println("Problem replicating keys during crash");
+				log.error("Problem replicating keys during crash");
+				return;
+			}
+		}
+	}
+
+	/*
+	 * This method gets the kth predecessor of a node
+	 */
+	public static String getKthPredecessorNode(long aNode, int k)
+			throws NoSuchAlgorithmException {
+		String predecessorNode = new String();
+		while (k-- > 0) {
+			predecessorNode = getPredecessorNode(aNode);
+			aNode = computeHash(predecessorNode);
+		}
+		return predecessorNode;
 	}
 }

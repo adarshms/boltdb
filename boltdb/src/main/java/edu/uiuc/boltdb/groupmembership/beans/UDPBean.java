@@ -7,10 +7,11 @@ package edu.uiuc.boltdb.groupmembership.beans;
 
 public class UDPBean {
 	public long hearbeatLastReceived;
-
-	public UDPBean(long hearbeatLastReceived) {
+	public long hashValue;
+	public UDPBean(long hearbeatLastReceived, long hashValue) {
 		super();
 		this.hearbeatLastReceived = hearbeatLastReceived;
+		this.hashValue = hashValue;
 	}
 	
 	

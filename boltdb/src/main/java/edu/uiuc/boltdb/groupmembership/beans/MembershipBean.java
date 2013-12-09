@@ -10,16 +10,17 @@ public class MembershipBean extends UDPBean {
 	public boolean toBeDeleted;
 	
 	public MembershipBean(String ipaddress, long hearbeatLastReceived, long timeStamp,
-			boolean toBeDeleted) {
-		super(hearbeatLastReceived);
+			long hashValue, boolean toBeDeleted) {
+		super(hearbeatLastReceived, hashValue);
 		this.hostname = ipaddress;
 		this.timeStamp = timeStamp;
+		this.hashValue = hashValue;
 		this.toBeDeleted = toBeDeleted;
 	}
 	
 	@Override
 	public String toString() {
-		return new String("[" + hostname + " " +hearbeatLastReceived+" "+timeStamp+" "+toBeDeleted+"]");
+		return new String("[" + hostname + " " +hearbeatLastReceived+" "+timeStamp+" "+toBeDeleted+ " " + hashValue + "]");
 	}
 	
 }

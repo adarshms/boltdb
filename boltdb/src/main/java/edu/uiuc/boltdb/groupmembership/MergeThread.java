@@ -2,10 +2,19 @@ package edu.uiuc.boltdb.groupmembership;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.net.InetAddress;
+import java.net.MalformedURLException;
+import java.net.UnknownHostException;
+import java.rmi.Naming;
+import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
+import java.security.NoSuchAlgorithmException;
+import java.security.acl.Group;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import org.apache.log4j.Logger;
 
@@ -13,6 +22,9 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 
+import edu.uiuc.boltdb.BoltDBProtocol;
+import edu.uiuc.boltdb.BoltDBServer;
+import edu.uiuc.boltdb.ValueTimeStamp;
 import edu.uiuc.boltdb.groupmembership.beans.MembershipBean;
 import edu.uiuc.boltdb.groupmembership.beans.UDPBean;
 
@@ -28,11 +40,12 @@ public class MergeThread implements Runnable
 	Map<String,UDPBean> incomingMembershipList = null;
 	String receivedJson = new String();
 	String sentHost;
-	
-	public  MergeThread(String sentHost, String json) 
+	Object lock;
+	public  MergeThread(String sentHost, String json, Object lock) 
 	{
 		this.sentHost = sentHost;
 		this.receivedJson = json;
+		this.lock = lock;
 	}
 	
 	public void run() 
@@ -46,8 +59,13 @@ public class MergeThread implements Runnable
 			System.out.println("Problem receiving gossip");
 			return;
 		}
-		mergeIncomingMembershipList();
-		//System.out.println("\nAFTER MERGE : "+GroupMembership.membershipList);
+		try {
+			synchronized (lock) {
+				mergeIncomingMembershipList();
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		} 
 	}
 
 	/**
@@ -63,8 +81,13 @@ public class MergeThread implements Runnable
 	
 	/**
 	 * Merge the incoming membership list into the current node's membership list
+	 * @throws UnknownHostException 
+	 * @throws NotBoundException 
+	 * @throws RemoteException 
+	 * @throws MalformedURLException 
+	 * @throws NoSuchAlgorithmException 
 	 */
-	private void mergeIncomingMembershipList() 
+	private void mergeIncomingMembershipList() throws UnknownHostException, MalformedURLException, RemoteException, NotBoundException, NoSuchAlgorithmException 
 	{
 		Iterator<Map.Entry<String, UDPBean>> iterator = incomingMembershipList.entrySet().iterator();
 		//Iterate over each entry of incoming membershiplist
@@ -89,8 +112,8 @@ public class MergeThread implements Runnable
 				//VOLUNTARILY LEAVE : If the incoming entry has heartbeat less than zero,then log 'VOLUNTARILY LEFT' message.
 				//Also update current node's membership list
 				if(receivedMBean.hearbeatLastReceived <= 0 && currentMBean.hearbeatLastReceived > 0) {
-					System.out.println("VOLUNTARILY LEFT : " + receivedPid+ " at "+(new Date()).toString());
-					log.info("VOLUNTARILY LEFT - - - " + receivedPid);
+					//System.out.println("VOLUNTARILY LEFT : " + receivedPid+ " at "+(new Date()).toString());
+					log.info("["+new Date()+"]VOLUNTARILY LEFT - - - " + receivedPid);
 					currentMBean.hearbeatLastReceived = -1;
 					currentMBean.timeStamp = System.currentTimeMillis();
 					currentMBean.toBeDeleted = false;
@@ -99,29 +122,180 @@ public class MergeThread implements Runnable
 				} else if (receivedMBean.hearbeatLastReceived <= 0 || currentMBean.hearbeatLastReceived <= 0) continue;
 				
 				//If the incoming entry's heartbeat is greater than current node's membership list,then update the list.
-				if(receivedMBean.hearbeatLastReceived > currentMBean.hearbeatLastReceived) 
-				{
-					currentMBean.hearbeatLastReceived = receivedMBean.hearbeatLastReceived;
-					currentMBean.timeStamp = System.currentTimeMillis();
-					if(currentMBean.toBeDeleted) {
-						System.out.println("JOINED : " + receivedPid);
-						currentMBean.toBeDeleted = false;
-					}
-					GroupMembership.membershipList.put(receivedPid, currentMBean);
-				}
-			} 
-			else 
+                if(receivedMBean.hearbeatLastReceived > currentMBean.hearbeatLastReceived) 
+                {
+                        currentMBean.hearbeatLastReceived = receivedMBean.hearbeatLastReceived;
+                        currentMBean.timeStamp = System.currentTimeMillis();
+                        if(currentMBean.toBeDeleted) {
+                                //System.out.println("JOINED : " + receivedPid);
+                                log.info("["+new Date()+"]JOINED : " + receivedPid);
+                                currentMBean.toBeDeleted = false;
+                        }
+                        GroupMembership.membershipList.put(receivedPid, currentMBean); 
+                }
+			}
+			else if(!GroupMembership.membershipList.containsKey(receivedPid) && receivedMBean.hearbeatLastReceived > 0) 
 			{
 				//JOIN : If the incoming entry is not in our membership list then it means a new node has joined.
-				if(receivedMBean.hearbeatLastReceived <= 0) continue;
-				String receivedHost = receivedPid.split(GroupMembership.pidDelimiter)[0];
-				MembershipBean mBean = new MembershipBean(receivedHost, receivedMBean.hearbeatLastReceived, System.currentTimeMillis(), false);
-				MembershipBean returnVal = GroupMembership.membershipList.putIfAbsent(receivedPid, mBean);
-				if (returnVal == null) 
-				{
-					System.out.println("JOINED : " + receivedPid+" at "+(new Date()).toString());
-					log.info("JOINED - - - " + receivedPid);
+				//if(receivedMBean.hearbeatLastReceived <= 0) continue;
+				String receivedHost = receivedPid
+						.split(GroupMembership.pidDelimiter)[0];
+				MembershipBean mBean = new MembershipBean(receivedHost,
+						receivedMBean.hearbeatLastReceived,
+						System.currentTimeMillis(), receivedMBean.hashValue,
+						false);
+
+				//System.out.println("JOINED : " + receivedPid+" at "+(new
+				//		Date()).toString());
+				log.info("["+new Date()+"]JOINED - - - " + receivedPid);
+				// Get the successor of newly joined node
+				if((System.currentTimeMillis() - GroupMembership.startTime) > (GroupMembership.tFail * 1000)) {
+					
+					boolean amISuccessor = amITheSuccesorOf(receivedMBean.hashValue);
+					if (amISuccessor) {
+						moveKeysSucc(receivedHost, mBean.hashValue);
+					} else if (GroupMembership.membershipList.size() >= 3) {
+						int amIInPredReReplicationSeg = GroupMembership
+								.inPredReReplicationSeg(
+										GroupMembership.membershipList
+												.get(GroupMembership.pid).hashValue,
+										mBean.hashValue);
+						if (amIInPredReReplicationSeg != -1) {
+							moveKeysPred(receivedHost, mBean.hashValue,
+									amIInPredReReplicationSeg);
+						}
+					}
 				}
+				GroupMembership.membershipList.putIfAbsent(receivedPid, mBean);
+
+			}
+		}
+	}
+	
+	/**
+	 * Check if I am the successor of the newly joined node.
+	 * @param receivedPid
+	 * @return
+	 * @throws UnknownHostException
+	 */
+	private boolean amITheSuccesorOf(long hashOfNewlyJoinedNode) throws UnknownHostException {
+		if(GroupMembership.membershipList.get(GroupMembership.getSuccessorNode(hashOfNewlyJoinedNode)).hostname.equals(InetAddress.getLocalHost().getHostName())) return true;
+		return false;
+	}
+	
+	/**
+	 * Move keys from yourself to the newly joined node just like in the chord paper
+	 * @param targetHost
+	 * @param hashOfNewJoinedNode
+	 * @throws MalformedURLException
+	 * @throws RemoteException
+	 * @throws NotBoundException
+	 * @throws NoSuchAlgorithmException
+	 */
+	private void moveKeysSucc(String targetHost, long hashOfNewJoinedNode) throws MalformedURLException, RemoteException, NotBoundException, NoSuchAlgorithmException {
+		//get the rmiserver handle from the rmi registry
+		BoltDBProtocol targetRMIServer = (BoltDBProtocol) Naming.lookup("rmi://" + targetHost + "/KVStore");
+		Iterator<Entry<Long,ValueTimeStamp>> itr = BoltDBServer.KVStore.entrySet().iterator();
+		long myHash = GroupMembership.membershipList.get(GroupMembership.pid).hashValue;
+		
+		// Get the rmiserver handle for successor's successor from the rmi registry
+		String succSuccessorHost = GroupMembership.membershipList.get(GroupMembership.getKthSuccessorNode(myHash, 2)).hostname;
+		BoltDBProtocol succSuccRMIServer = (BoltDBProtocol) Naming.lookup("rmi://" + succSuccessorHost + "/KVStore");
+		long predecessorHash = myHash;
+		if(GroupMembership.membershipList.size() > 1)
+			predecessorHash = GroupMembership.membershipList.get(GroupMembership.getKthPredecessorNode(myHash, 1)).hashValue;
+		
+		while(itr.hasNext()) {
+			Entry<Long,ValueTimeStamp> entry = itr.next();
+			long hashOfKey = GroupMembership.computeHash(entry.getKey().toString());
+			if (predecessorHash == myHash
+					|| amIPrimaryReplicaFor(hashOfKey, myHash, predecessorHash)) {
+				// If hash of current server is greater than hash of newly
+				// joined server
+				// then move all the keys greater than hash of current server
+				// and less than newly joined server.
+				if (myHash > hashOfNewJoinedNode) {
+					if (hashOfKey > myHash || hashOfKey <= hashOfNewJoinedNode) {
+						log.info("["+new Date()+"]Inserting key :" + entry.getKey()
+								+ " value:" + entry.getValue() + " from Me to "
+								+ targetHost);
+						targetRMIServer.insert(entry.getKey(),
+								entry.getValue(), false, null);
+						// BoltDBServer.KVStore.remove(entry.getKey());
+						// Delete this key in successor's successor
+						
+						if (GroupMembership.membershipList.size() >= 3) {
+							log.info("["+new Date()+"]Deleting key :"
+									+ entry.getKey() + " from "
+									+ succSuccessorHost);
+							succSuccRMIServer.delete(entry.getKey(), false, null);
+						}
+					}
+				}
+				// If hash of current server is less than hash of newly joined
+				// server
+				// then move all the keys in between the two servers hashes.
+				else {
+					if (hashOfKey > myHash && hashOfKey <= hashOfNewJoinedNode) {
+						log.info("["+new Date()+"]Inserting key :" + entry.getKey()
+								+ " value:" + entry.getValue() + " from Me to "
+								+ targetHost);
+						targetRMIServer.insert(entry.getKey(),
+								entry.getValue(), false,null);
+						// BoltDBServer.KVStore.remove(entry.getKey());
+						// Delete this key in successor's successor
+						if (GroupMembership.membershipList.size() >= 3) {
+							log.info("["+new Date()+"]Deleting key :"
+									+ entry.getKey() + " from "
+									+ succSuccessorHost);
+							succSuccRMIServer.delete(entry.getKey(), false, null);
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	private boolean amIPrimaryReplicaFor(long key,long myHash,long predecessorHash) {
+		if (myHash > predecessorHash) {
+			if (key > predecessorHash && key <= myHash) return true;
+		} else {
+			if (key > predecessorHash || key <= myHash) return true;
+		}
+		return false;
+	}
+	private void moveKeysPred(String targetHost, long hashOfNewJoinedNode, int predecessorPosition) throws MalformedURLException, RemoteException, NotBoundException, NoSuchAlgorithmException {
+		//get the rmiserver handle from the rmi registry
+		BoltDBProtocol targetRMIServer = (BoltDBProtocol) Naming.lookup("rmi://" + targetHost + "/KVStore");
+		long myHash = GroupMembership.membershipList.get(GroupMembership.pid).hashValue;
+		
+		// Get the rmiserver handle for (k-p)th successor from the rmi registry
+		String kpthSuccHost = GroupMembership.membershipList.get(GroupMembership.getKthSuccessorNode(hashOfNewJoinedNode, (GroupMembership.replicationFactor - predecessorPosition))).hostname;
+		BoltDBProtocol kpthSuccRMIServer = (BoltDBProtocol) Naming.lookup("rmi://" + kpthSuccHost + "/KVStore");
+
+		long myPredecessor = GroupMembership.membershipList.get(GroupMembership.getPredecessorNode(myHash)).hashValue;
+		Iterator<Entry<Long,ValueTimeStamp>> itr = BoltDBServer.KVStore.entrySet().iterator();
+		while(itr.hasNext()) {
+			Entry<Long,ValueTimeStamp> entry = itr.next();
+			long hashOfKey = GroupMembership.computeHash(entry.getKey().toString());
+			if (myHash > myPredecessor) {
+				if ( hashOfKey > myPredecessor && hashOfKey <= myHash) {
+					log.info("["+new Date()+"]Inserting key :" + entry.getKey() + " from Me to " + targetHost);
+					targetRMIServer.insert(entry.getKey(), entry.getValue(),false, null);
+					
+					log.info("["+new Date()+"]Deleting key :" + entry.getKey() + " from " + kpthSuccHost);
+					kpthSuccRMIServer.delete(entry.getKey(), false, null);
+				} 
+			}
+			else {
+				if ( hashOfKey > myPredecessor || hashOfKey <= myHash) {
+					log.info("["+new Date()+"]Inserting key :" + entry.getKey() + " from Me to " + targetHost);
+					targetRMIServer.insert(entry.getKey(), entry.getValue(),false, null);
+					
+					log.info("["+new Date()+"]Deleting key :" + entry.getKey() + " from " + kpthSuccHost);
+					kpthSuccRMIServer.delete(entry.getKey(), false, null);
+
+				} 
 			}
 		}
 	}

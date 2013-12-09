@@ -49,7 +49,7 @@ public class SendMembershipListThread extends Thread
 				Map.Entry<String, MembershipBean> entry = iterator.next();
 				if(entry.getValue().toBeDeleted)
 					continue;
-				listToSend.put(entry.getKey(), new UDPBean(entry.getValue().hearbeatLastReceived));
+				listToSend.put(entry.getKey(), new UDPBean(entry.getValue().hearbeatLastReceived,entry.getValue().hashValue));
 			}
 			String json = gson.toJson(listToSend, typeOfHashMap);
 			byte[] jsonBytes = json.getBytes();
